@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     GIRL<DenseAction,DenseState> irlAlg(data, expertPolicy, rewardRegressor,
                                         mdp.getSettings().gamma, atype);
 
-    PlaneGIRL<DenseAction, DenseState> irlAlg2(data, expertPolicy, basisReward,
+    PlaneGIRL<DenseAction, DenseState> irlAlg2(data, expertPolicy, phiReward,
             mdp.getSettings().gamma, atype);
 
 #ifdef RUN

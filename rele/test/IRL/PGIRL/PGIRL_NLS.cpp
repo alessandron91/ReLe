@@ -121,9 +121,9 @@ int main(int argc, char *argv[])
     DenseFeatures phiReward(basisReward);
 
     LinearApproximator rewardRegressor(phiReward);
-    PlaneGIRL<DenseAction,DenseState> irlAlg1(data, expertPolicy, basisReward,
+    PlaneGIRL<DenseAction,DenseState> irlAlg1(data, expertPolicy, phiReward,
             mdp.getSettings().gamma, atype, false);
-    PlaneGIRL<DenseAction,DenseState> irlAlg2(data, expertPolicy, basisReward,
+    PlaneGIRL<DenseAction,DenseState> irlAlg2(data, expertPolicy, phiReward,
             mdp.getSettings().gamma, atype, true);
 
     //Info print
@@ -140,17 +140,17 @@ int main(int argc, char *argv[])
     irlAlg1.run();
     arma::vec weights1 = irlAlg1.getWeights();
 
-    irlAlg2.run();
-    arma::vec weights2 = irlAlg2.getWeights();
+    //irlAlg2.run();
+    //arma::vec weights2 = irlAlg2.getWeights();
 
 
     cout << "weights (hessian): " << weights1.t();
-    cout << "weights  (sparse): " << weights2.t();
+    //cout << "weights  (sparse): " << weights2.t();
 
-    arma::mat weights(weights1.n_rows, 2);
+    arma::mat weights(weights1.n_rows, 1);
 
     weights.col(0) = weights1;
-    weights.col(1) = weights2;
+    //weights.col(1) = weights2;
 
 #endif
 

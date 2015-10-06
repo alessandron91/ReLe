@@ -18,7 +18,7 @@ zc = 0.1*zc;
 
 titles{1} = 'Imitator 1 - Hessian';
 titles{2} = 'Imitator 2 - Sparse';
-lastindex = 2;
+lastindex = 1;
 
 
 for i = 1:lastindex

@@ -37,9 +37,6 @@ public:
 
     static arma::uvec selectFeatures(arma::mat& features, double varMin, bool useCorrelation = true)
     {
-        std::cout << "meanFeature" << std::endl << arma::sum(features,1)/ features.n_cols << std::endl;
-
-
         arma::mat Sigma;
 
         if(useCorrelation)
