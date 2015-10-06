@@ -79,7 +79,7 @@ public:
         int dp  = policy.getParametersSize();
         arma::vec sumGradLog(dp), localg;
         arma::mat gradient_J(dp, dp, arma::fill::zeros);
-        arma::mat Rew(dp, dp);
+        arma::vec Rew(dp);
 
         int nbEpisodes = data.size();
         for (int i = 0; i < nbEpisodes; ++i)
@@ -103,7 +103,7 @@ public:
                 // *** REINFORCE CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
                 sumGradLog += localg;
-                Rew += df * arma::diagmat(T*phi(vectorize(tr.x, tr.u, tr.xn)));
+                Rew += df * T*phi(vectorize(tr.x, tr.u, tr.xn));
                 // ********************** //
 
                 df *= gamma;
@@ -116,7 +116,10 @@ public:
             }
 
             // *** REINFORCE CORE *** //
-            gradient_J += Rew * arma::repmat(sumGradLog, 1, dp);
+            std::cout << "Rew" << std::endl << Rew;
+
+            for(unsigned int i = 0; i < dp; i++)
+            	gradient_J.col(i) += Rew(i) * sumGradLog;
 
             // ********************** //
 
@@ -646,6 +649,8 @@ public:
             T = arma::vec(dp, dp, arma::fill::eye);
         }
 
+        std::cout << "T" << std::endl << T << std::endl;
+
 
         arma::mat A;
 
@@ -693,6 +698,7 @@ public:
         int rnkG = rank(A);
         if ( rnkG < dr && A.n_rows >= A.n_cols )
         {
+        	//TODO FIX this....
             // select linearly independent columns
             arma::mat Asub;
             nonZeroIdx = rref(A, Asub);
@@ -736,8 +742,7 @@ public:
 
 
         // prepare the output
-        weights.zeros(A.n_cols);
-        weights(nonZeroIdx) = T.t()*Y;
+        weights = T.t()*Y;
 
 
         //Normalize (L1) weights
