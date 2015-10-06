@@ -116,8 +116,6 @@ public:
             }
 
             // *** REINFORCE CORE *** //
-            std::cout << "Rew" << std::endl << Rew;
-
             for(unsigned int i = 0; i < dp; i++)
             	gradient_J.col(i) += Rew(i) * sumGradLog;
 
