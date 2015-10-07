@@ -636,44 +636,7 @@ public:
         std::cout << "T" << std::endl << T << std::endl;
 
 
-        arma::mat A;
-
-
-        switch(atype)
-        {
-        case R:
-            A = ReinforceGradient();
-            break;
-        case RB:
-            A = ReinforceBaseGradient();
-            break;
-
-        case G:
-            A = GpomdpGradient();
-            break;
-
-        case GB:
-            A = GpomdpBaseGradient();
-            break;
-
-        case NATR:
-        case NATRB:
-        case NATG:
-        case NATGB:
-            A = NaturalGradient();
-            break;
-
-        case ENAC:
-            A = ENACGradient();
-            break;
-
-
-        default:
-            std::cerr << "PGIRL ERROR" << std::endl;
-            abort();
-            break;
-        }
-
+        arma::mat A = computeGradient();
         A.save("/tmp/ReLe/grad.log", arma::raw_ascii);
 
         std::cout << "Grads: \n" << A << std::endl;
@@ -737,6 +700,44 @@ public:
         weights /= arma::sum(weights);
 
     }
+
+private:
+	arma::mat computeGradient()
+	{
+		arma::mat A;
+
+		switch (atype)
+		{
+			case R:
+				A = ReinforceGradient();
+				break;
+			case RB:
+				A = ReinforceBaseGradient();
+				break;
+			case G:
+				A = GpomdpGradient();
+				break;
+			case GB:
+				A = GpomdpBaseGradient();
+				break;
+			case NATR:
+			case NATRB:
+			case NATG:
+			case NATGB:
+				A = NaturalGradient();
+				break;
+			case ENAC:
+				A = ENACGradient();
+				break;
+			default:
+				std::cerr << "PGIRL ERROR" << std::endl;
+				abort();
+				break;
+		}
+
+		return A;
+	}
+
 
 
 protected:
