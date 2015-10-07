@@ -23,20 +23,21 @@
 
 #include "features/SparseFeatures.h"
 #include "features/DenseFeatures.h"
-#include "regressors/GaussianMixtureModels.h"
+#include "regressors/LinearApproximator.h"
 #include "basis/IdentityBasis.h"
 #include "basis/PolynomialFunction.h"
 #include "basis/GaussianRbf.h"
 
 #include "parametric/differentiable/NormalPolicy.h"
 
-#include "NLS.h"
+#include "ShipSteering.h"
 
 #include "PolicyEvalAgent.h"
 #include "Core.h"
 #include "ParametricRewardMDP.h"
 #include "algorithms/PGIRL.h"
-#include "policy_search/gradient/onpolicy/GPOMDPAlgorithm.h"
+
+#include "policy_search/gradient/onpolicy/REINFORCEAlgorithm.h"
 
 #include "FileManager.h"
 
@@ -46,83 +47,82 @@ using namespace ReLe;
 
 //#define PRINT
 #define RUN_GIRL
-#define RECOVER
+//#define RECOVER
+
 
 int main(int argc, char *argv[])
 {
 //  RandomGenerator::seed(45423424);
 //  RandomGenerator::seed(8763575);
 
-
-    IRLGradType atype = IRLGradType::RB;
+    IRLGradType atype = IRLGradType::GB;
     int nbEpisodes = 3000;
 
-    FileManager fm("nls", "PGIRL");
+    //Learning parameters
+    int episodesPerPolicy = 1;
+    int policyPerUpdate = 100;
+    int updates = 400;
+    int episodes = episodesPerPolicy*policyPerUpdate*updates;
+    int testEpisodes = 100;
+    AdaptiveStep stepRule(0.01);
+
+    FileManager fm("ship", "GIRL");
     fm.createDir();
     fm.cleanDir();
     std::cout << std::setprecision(OS_PRECISION);
 
+    //Empty strategy
+    EmptyStrategy<DenseAction, DenseState> empty;
 
-    NLS mdp;
+    // Learn Ship correct policy
+    ShipSteering mdp;
 
-    //Setup expert policy
     int dim = mdp.getSettings().continuosStateDim;
 
-    BasisFunctions basis = IdentityBasis::generate(dim);
+    BasisFunctions basis = GaussianRbf::generate(
+    {
+        3,
+        3,
+        6,
+        2
+    },
+    {
+        0.0, 150.0,
+        0.0, 150.0,
+        -M_PI, M_PI,
+        -15.0, 15.0
+    });
+
     DenseFeatures phi(basis);
 
-    BasisFunctions stdBasis = PolynomialFunction::generate(1, dim);
-    DenseFeatures stdPhi(stdBasis);
-    arma::vec stdWeights(stdPhi.rows());
-    stdWeights.fill(0.1);
+    double epsilon = 0.05;
+    NormalPolicy expertPolicy(epsilon, phi);
 
-    NormalStateDependantStddevPolicy expertPolicy(phi, stdPhi, stdWeights);
+    // Solve the problem with REINFORCE
+    REINFORCEAlgorithm<DenseAction, DenseState> expert(expertPolicy, policyPerUpdate, stepRule);
 
-    arma::vec p(2);
-    p(0) = 6.5178;
-    p(1) = -2.5994;
+    Core<DenseAction, DenseState> expertCore(mdp, expert);
+    expertCore.getSettings().loggerStrategy = &empty;
+    expertCore.getSettings().episodeLenght = mdp.getSettings().horizon;
+    expertCore.getSettings().episodeN = episodes;
+    expertCore.getSettings().testEpisodeN = testEpisodes;
+    expertCore.runEpisodes();
 
-    expertPolicy.setParameters(p);
-
-    PolicyEvalAgent<DenseAction, DenseState> expert(expertPolicy);
 
     // Generate expert dataset
-    Core<DenseAction, DenseState> expertCore(mdp, expert);
     CollectorStrategy<DenseAction, DenseState> collection;
     expertCore.getSettings().loggerStrategy = &collection;
-    expertCore.getSettings().episodeLenght = mdp.getSettings().horizon;
-    expertCore.getSettings().testEpisodeN = nbEpisodes;
     expertCore.runTestEpisodes();
     Dataset<DenseAction,DenseState>& data = collection.data;
 
 
     // Create parametric reward
-    //BasisFunctions basisReward = IdentityBasis::generate(2);
-    unsigned int nbasis = 3;
-    double anglePart = nbasis;
-    double sigma = 1.0/anglePart;
-
-    /*arma::vec cT = {0, 0};
-    arma::vec cF = {10, 10};
-    BasisFunction* bfT = new GaussianRbf(cT, sigma);
-    BasisFunction* bfF = new GaussianRbf(cF, sigma);
-    BasisFunctions basisReward;
-    basisReward.push_back(bfT);
-    basisReward.push_back(bfF);
-
-    for(unsigned int i = 0; i < nbasis; i++)
-    {
-        double angle = i*2.0/anglePart*M_PI;
-        basisReward.push_back(new GaussianRbf({cos(angle), sin(angle)}, sigma));
-    }*/
-
-    BasisFunctions basisReward = GaussianRbf::generate({5, 5}, {-1, 2, -1, 2});
-
+    BasisFunctions basisReward = GaussianRbf::generate({20, 20}, {0, 150, 0, 150});
     DenseFeatures phiReward(basisReward);
 
     LinearApproximator rewardRegressor(phiReward);
     PlaneGIRL<DenseAction,DenseState> irlAlg(data, expertPolicy, phiReward,
-            mdp.getSettings().gamma, atype);
+                                         mdp.getSettings().gamma, atype);
 
     //Info print
     std::cout << "Basis size: " << phiReward.rows();
@@ -138,17 +138,12 @@ int main(int argc, char *argv[])
     irlAlg.run();
     arma::vec weights1 = irlAlg.getWeights();
 
-    //irlAlg2.run();
-    //arma::vec weights2 = irlAlg2.getWeights();
 
+    cout << "weights         (pca): " << weights1.t();
 
-    cout << "weights (pca): " << weights1.t();
-    //cout << "weights  (sparse): " << weights2.t();
-
-    arma::mat weights(weights1.n_rows, 1);
+    arma::mat weights(weights1.n_rows, 2);
 
     weights.col(0) = weights1;
-    //weights.col(1) = weights2;
 
 #endif
 
@@ -164,14 +159,13 @@ int main(int argc, char *argv[])
         int updates = 400;
         int episodes = episodesPerPolicy*policyPerUpdate*updates;
 
-        NormalStateDependantStddevPolicy imitatorPolicy(phi, stdPhi, stdWeights);
+        NormalPolicy imitatorPolicy(epsilon, phi);
         AdaptiveStep stepRule(0.01);
         int nparams = phi.rows();
         arma::vec mean(nparams, fill::zeros);
 
         imitatorPolicy.setParameters(mean);
-        GPOMDPAlgorithm<DenseAction, DenseState> imitator(imitatorPolicy, policyPerUpdate,
-                mdp.getSettings().horizon, stepRule, GPOMDPAlgorithm<DenseAction, DenseState>::BaseLineType::MULTI);
+        REINFORCEAlgorithm<DenseAction, DenseState> imitator(imitatorPolicy, policyPerUpdate, stepRule);
 
         ParametricRewardMDP<DenseAction, DenseState> prMdp(mdp, rewardRegressor);
         Core<DenseAction, DenseState> imitatorCore(prMdp, imitator);
@@ -208,41 +202,6 @@ int main(int argc, char *argv[])
         ofstream ofs(fm.addPath(ss.str()));
         data2.writeToStream(ofs);
     }
-#endif
-
-
-#ifdef PRINT
-    //calculate full grid function
-    int samplesParams = 101;
-    arma::vec valuesG(samplesParams);
-    arma::vec valuesJ(samplesParams);
-    arma::vec valuesD(samplesParams);
-
-    for(int i = 0; i < samplesParams; i++)
-    {
-        cerr << i << endl;
-        double step = 0.01;
-        arma::vec wm(2);
-        wm(0) = i*step;
-        wm(1) = 1.0 - wm(0);
-        rewardRegressor.setParameters(wm);
-        arma::mat gGrad(2, 2);
-        arma::vec dJ;
-        arma::vec dD;
-        arma::vec g = irlAlg1.ReinforceBaseGradient(gGrad);
-
-        double Je = irlAlg1.computeJ(dJ);
-        double D = irlAlg1.computeDisparity(dD);
-        double G2 = as_scalar(g.t()*g);
-        valuesG(i) = std::sqrt(G2);
-        valuesJ(i) = Je;
-        valuesD(i) = D;
-    }
-
-    valuesG.save("/tmp/ReLe/G.txt", arma::raw_ascii);
-    valuesJ.save("/tmp/ReLe/J.txt", arma::raw_ascii);
-    valuesD.save("/tmp/ReLe/D.txt", arma::raw_ascii);
-
 #endif
 
     // Save Reward Function

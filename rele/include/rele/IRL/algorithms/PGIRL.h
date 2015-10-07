@@ -46,7 +46,7 @@ public:
     PlaneGIRL(Dataset<ActionC,StateC>& dataset,
               DifferentiablePolicy<ActionC,StateC>& policy,
               DenseFeatures& phi,
-              double gamma, IRLGradType aType, bool sparse = true)
+              double gamma, IRLGradType aType)
         : policy(policy), data(dataset), phi(phi),
           gamma(gamma), atype(aType)
     {
@@ -622,7 +622,7 @@ public:
         arma::mat phiBar = data.computeEpisodeFeatureExpectation(phi, gamma);
 
         //Principal component analysis
-        if(phiBar.n_cols > dp)
+        if(phiBar.n_rows > dp)
         {
             PrincipalComponentAnalysis pca;
             pca.createFeatures(phiBar, dp, false);
@@ -630,7 +630,7 @@ public:
         }
         else
         {
-            T = arma::vec(dp, dp, arma::fill::eye);
+            T = arma::mat(dp, dp, arma::fill::eye);
         }
 
         std::cout << "T" << std::endl << T << std::endl;
