@@ -103,7 +103,7 @@ public:
                 // *** REINFORCE CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
                 sumGradLog += localg;
-                Rew += df * T*phi(vectorize(tr.x, tr.u, tr.xn));
+                Rew += df * T *phi(vectorize(tr.x, tr.u, tr.xn));
                 // ********************** //
 
                 df *= gamma;
@@ -117,7 +117,7 @@ public:
 
             // *** REINFORCE CORE *** //
             for(unsigned int i = 0; i < dp; i++)
-            	gradient_J.col(i) += Rew(i) * sumGradLog;
+                gradient_J.col(i) += Rew(i) * sumGradLog;
 
             // ********************** //
 
@@ -128,44 +128,43 @@ public:
         return gradient_J;
     }
 
-    arma::vec ReinforceBaseGradient(BasisFunction& rewardf)
+    arma::mat ReinforceBaseGradient()
     {
         int dp  = policy.getParametersSize();
         int nbEpisodes = data.size();
 
         arma::vec sumGradLog(dp), localg;
-        arma::vec gradient_J(dp, arma::fill::zeros);
-        double Rew;
+        arma::mat gradient_J(dp, dp, arma::fill::zeros);
+        arma::vec Rew(dp);
 
-        arma::vec baseline_J_num(dp, arma::fill::zeros);
-        arma::vec baseline_den(dp, arma::fill::zeros);
-        arma::vec return_J_ObjEp(nbEpisodes);
+        arma::mat baseline_J_num(dp, dp, arma::fill::zeros);
+        arma::mat baseline_den(dp, dp, arma::fill::zeros);
+        arma::mat return_J_ObjEp(dp, nbEpisodes);
         arma::mat sumGradLog_CompEp(dp,nbEpisodes);
 
-        for (int i = 0; i < nbEpisodes; ++i)
+        for (int ep = 0; ep < nbEpisodes; ++ep)
         {
             //core setup
-            int nbSteps = data[i].size();
+            int nbSteps = data[ep].size();
 
 
             // *** REINFORCE CORE *** //
             sumGradLog.zeros();
             double df = 1.0;
-            Rew = 0.0;
+            Rew.zeros();
             // ********************** //
 
             //iterate the episode
             for (int t = 0; t < nbSteps; ++t)
             {
-                Transition<ActionC, StateC>& tr = data[i][t];
-                //            std::cout << tr.x << " " << tr.u << " " << tr.xn << " " << tr.r[0] << std::endl;
+                Transition<ActionC, StateC>& tr = data[ep][t];
 
                 // *** REINFORCE CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
                 for (int p = 0; p < dp; ++p)
                     assert(!isinf(localg(p)));
                 sumGradLog += localg;
-                Rew += df * rewardf(vectorize(tr.x, tr.u, tr.xn));
+                Rew += df * T * phi(vectorize(tr.x, tr.u, tr.xn));
                 // ********************** //
 
                 df *= gamma;
@@ -181,20 +180,18 @@ public:
 
             // store the basic elements used to compute the gradients
 
-            return_J_ObjEp(i) = Rew;
+            return_J_ObjEp.col(ep) = Rew;
 
-            for (int p = 0; p < dp; ++p)
-            {
-                sumGradLog_CompEp(p,i) = sumGradLog(p);
-            }
+            sumGradLog_CompEp.col(ep) = sumGradLog;
+
 
             // compute the baselines
-            for (int p = 0; p < dp; ++p)
+            for (int i = 0; i < dp; ++i)
             {
-                baseline_J_num(p) += Rew * sumGradLog(p) * sumGradLog(p);
-                baseline_den(p) += sumGradLog(p) * sumGradLog(p);
-                assert(!isinf(baseline_J_num(p)));
+                baseline_J_num.col(i) += Rew(i) * sumGradLog % sumGradLog;
             }
+
+            baseline_den = arma::repmat(sumGradLog % sumGradLog, 1, dp);
 
             // ********************** //
 
@@ -203,23 +200,20 @@ public:
         // *** REINFORCE BASE CORE *** //
 
         // compute the gradients
-        for (int p = 0; p < dp; ++p)
+        for (int i = 0; i < dp; ++i)
         {
 
-            double baseline_J = 0;
-            if (baseline_den(p) != 0)
-            {
-                baseline_J = baseline_J_num(p) / baseline_den(p);
-            }
+            arma::vec baseline_J(dp, arma::fill::zeros);
+            arma::vec baseline_J_num_i = baseline_J_num.col(i);
+            arma::vec baseline_den_i = baseline_den.col(i);
+            arma::uvec nonZeros = arma::find(baseline_den_i != 0);
+
+            baseline_J(nonZeros) = baseline_J_num_i(nonZeros) / baseline_den_i(nonZeros);
+
 
             for (int ep = 0; ep < nbEpisodes; ++ep)
             {
-                double a =return_J_ObjEp(ep);
-                double b = sumGradLog_CompEp(p,ep);
-                assert(!isnan(a));
-                assert(!isnan(b));
-                assert(!isnan(baseline_J));
-                gradient_J[p] += (return_J_ObjEp(ep) - baseline_J) * sumGradLog_CompEp(p,ep);
+                gradient_J.col(i) += (return_J_ObjEp(i, ep) - baseline_J) % sumGradLog_CompEp.col(ep);
             }
         }
 
@@ -231,12 +225,11 @@ public:
         return gradient_J;
     }
 
-    arma::vec GpomdpGradient(BasisFunction& rewardf)
+    arma::mat GpomdpGradient()
     {
         int dp  = policy.getParametersSize();
         arma::vec sumGradLog(dp), localg;
-        arma::vec gradient_J(dp, arma::fill::zeros);
-        double Rew;
+        arma::mat gradient_J(dp, dp, arma::fill::zeros);
 
         int nbEpisodes = data.size();
         for (int i = 0; i < nbEpisodes; ++i)
@@ -248,26 +241,22 @@ public:
             // *** GPOMDP CORE *** //
             sumGradLog.zeros();
             double df = 1.0;
-            Rew = 0.0;
             // ********************** //
 
             //iterate the episode
             for (int t = 0; t < nbSteps; ++t)
             {
                 Transition<ActionC, StateC>& tr = data[i][t];
-                //            std::cout << tr.x << " " << tr.u << " " << tr.xn << " " << tr.r[0] << std::endl;
 
                 // *** GPOMDP CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
                 sumGradLog += localg;
-                double creward = rewardf(vectorize(tr.x, tr.u, tr.xn));
-                Rew += df * creward;
+                arma::vec creward = T*phi(vectorize(tr.x, tr.u, tr.xn));
 
                 // compute the gradients
-                Rew += df * creward;
-                for (int p = 0; p < dp; ++p)
+                for (int i = 0; i < dp; ++i)
                 {
-                    gradient_J[p] += df * creward * sumGradLog(p);
+                    gradient_J.col(i) += df * creward(i) * sumGradLog;
                 }
                 // ********************** //
 
@@ -287,7 +276,7 @@ public:
         return gradient_J;
     }
 
-    arma::vec GpomdpBaseGradient(BasisFunction& rewardf)
+    arma::mat GpomdpBaseGradient()
     {
         int dp  = policy.getParametersSize();
         int nbEpisodes = data.size();
@@ -301,12 +290,11 @@ public:
         }
 
         arma::vec sumGradLog(dp), localg;
-        arma::vec gradient_J(dp, arma::fill::zeros);
-        double Rew;
+        arma::mat gradient_J(dp, dp, arma::fill::zeros);
 
-        arma::mat baseline_J_num(dp, maxSteps, arma::fill::zeros);
-        arma::mat baseline_den(dp, maxSteps, arma::fill::zeros);
-        arma::mat reward_J_ObjEpStep(nbEpisodes, maxSteps);
+        arma::cube baseline_J_num(dp, maxSteps, dp, arma::fill::zeros);
+        arma::cube baseline_den(dp, maxSteps, dp, arma::fill::zeros);
+        arma::cube reward_J_ObjEpStep(nbEpisodes, maxSteps, dp);
         arma::cube sumGradLog_CompEpStep(dp,nbEpisodes, maxSteps);
         arma::vec  maxsteps_Ep(nbEpisodes);
 
@@ -319,40 +307,32 @@ public:
             // *** GPOMDP CORE *** //
             sumGradLog.zeros();
             double df = 1.0;
-            Rew = 0.0;
             // ********************** //
 
             //iterate the episode
             for (int t = 0; t < nbSteps; ++t)
             {
                 Transition<ActionC, StateC>& tr = data[ep][t];
-                //            std::cout << tr.x << " " << tr.u << " " << tr.xn << " " << tr.r[0] << std::endl;
 
                 // *** GPOMDP CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
                 sumGradLog += localg;
 
                 // store the basic elements used to compute the gradients
-                double creward = rewardf(vectorize(tr.x, tr.u, tr.xn));
-                Rew += df * creward;
-                reward_J_ObjEpStep(ep,t) = df * creward;
+                arma::vec creward = T * phi(vectorize(tr.x, tr.u, tr.xn));
+                reward_J_ObjEpStep.tube(ep,t) = df * creward;
 
 
-                for (int p = 0; p < dp; ++p)
-                {
-                    sumGradLog_CompEpStep(p,ep,t) = sumGradLog(p);
-                }
+                sumGradLog_CompEpStep.slice(t).col(ep) = sumGradLog;
+
 
                 // compute the baselines
-                for (int p = 0; p < dp; ++p)
+                for(unsigned int i = 0; i < dp; i++)
                 {
-                    baseline_J_num(p,t) += df * creward * sumGradLog(p) * sumGradLog(p);
+                    baseline_J_num.slice(i).col(t) += df * creward(i) * sumGradLog % sumGradLog;
+                    baseline_den.slice(i).col(t) += sumGradLog % sumGradLog;
                 }
 
-                for (int p = 0; p < dp; ++p)
-                {
-                    baseline_den(p,t) += sumGradLog(p) * sumGradLog(p);
-                }
                 // ********************** //
 
                 df *= gamma;
@@ -372,20 +352,20 @@ public:
         // *** GPOMDP BASE CORE *** //
 
         // compute the gradients
-        for (int p = 0; p < dp; ++p)
+
+        for (int ep = 0; ep < nbEpisodes; ++ep)
         {
-            for (int ep = 0; ep < nbEpisodes; ++ep)
+            for (int t = 0; t < maxsteps_Ep(ep); ++t)
             {
-                for (int t = 0; t < maxsteps_Ep(ep); ++t)
+                for(unsigned int i = 0; i < dp; i++)
                 {
+                    arma::vec baseline_J(dp, arma::fill::zeros);
+                    arma::vec baseline_J_num_t = baseline_J_num.slice(i).col(t);
+                    arma::vec baseline_den_t = baseline_den.slice(i).col(t);
+                    arma::uvec nonZeros = arma::find(baseline_den_t != 0);
 
-                    double baseline_J = 0;
-                    if (baseline_den(p,t) != 0)
-                    {
-                        baseline_J = baseline_J_num(p,t) / baseline_den(p,t);
-                    }
-
-                    gradient_J[p] += (reward_J_ObjEpStep(ep,t) - baseline_J) * sumGradLog_CompEpStep(p,ep,t);
+                    baseline_J(nonZeros) = baseline_J_num_t(nonZeros) / baseline_den_t(nonZeros);
+                    gradient_J.col(i) += (reward_J_ObjEpStep(ep,t, i) - baseline_J) % sumGradLog_CompEpStep.slice(t).col(ep);
                 }
             }
         }
@@ -397,7 +377,7 @@ public:
         return gradient_J;
     }
 
-    arma::vec NaturalGradient(BasisFunction& rewardf)
+    arma::mat NaturalGradient()
     {
         int dp  = policy.getParametersSize();
         arma::vec localg;
@@ -413,7 +393,6 @@ public:
             for (int t = 0; t < nbSteps; ++t)
             {
                 Transition<ActionC, StateC>& tr = data[i][t];
-                //            std::cout << tr.x << " " << tr.u << " " << tr.xn << " " << tr.r[0] << std::endl;
 
                 // *** eNAC CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
@@ -430,48 +409,51 @@ public:
         }
         fisher /= nbEpisodes;
 
-        arma::vec gradient;
+        arma::mat gradient;
         if (atype == IRLGradType::NATR)
         {
-            gradient = ReinforceGradient(rewardf);
+            gradient = ReinforceGradient();
         }
         else if (atype == IRLGradType::NATRB)
         {
-            gradient = ReinforceBaseGradient(rewardf);
+            gradient = ReinforceBaseGradient();
         }
         else if (atype == IRLGradType::NATG)
         {
-            gradient = GpomdpGradient(rewardf);
+            gradient = GpomdpGradient();
         }
         else if (atype == IRLGradType::NATGB)
         {
-            gradient = GpomdpBaseGradient(rewardf);
+            gradient = GpomdpBaseGradient();
         }
 
-        arma::vec nat_grad;
         int rnk = arma::rank(fisher);
-        //        std::cout << rnk << " " << fisher << std::endl;
-        if (rnk == fisher.n_rows)
+        arma::mat nat_grad(dp, dp);
+        for(unsigned int i = 0; i < dp; i++)
         {
-            nat_grad = arma::solve(fisher, gradient);
-        }
-        else
-        {
-            std::cerr << "WARNING: Fisher Matrix is lower rank (rank = " << rnk << ")!!! Should be " << fisher.n_rows << std::endl;
+            if (rnk == fisher.n_rows)
+            {
+                nat_grad.col(i) = arma::solve(fisher, gradient.col(i));
+            }
+            else
+            {
+                std::cerr << "WARNING: Fisher Matrix is lower rank (rank = " << rnk << ")!!! Should be " << fisher.n_rows << std::endl;
 
-            arma::mat H = arma::pinv(fisher);
-            nat_grad = H * gradient;
+                arma::mat H = arma::pinv(fisher);
+                nat_grad.col(i) = H * gradient.col(i);
+            }
         }
 
         return nat_grad;
     }
 
-    arma::vec ENACGradient(BasisFunction& rewardf)
+    arma::mat ENACGradient()
     {
         int dp  = policy.getParametersSize();
         arma::vec localg;
-        double Rew;
-        arma::vec g(dp+1, arma::fill::zeros), phi(dp+1);
+        arma::vec Rew(dp);
+        arma::mat g(dp+1, dp, arma::fill::zeros);
+        arma::vec phi(dp+1);
         arma::mat fisher(dp+1,dp+1, arma::fill::zeros);
         //        double Jpol = 0.0;
 
@@ -484,7 +466,7 @@ public:
 
             // *** eNAC CORE *** //
             double df = 1.0;
-            Rew = 0.0;
+            Rew.zeros();
             phi.zeros();
             //    #ifdef AUGMENTED
             phi(dp) = 1.0;
@@ -499,8 +481,7 @@ public:
 
                 // *** eNAC CORE *** //
                 localg = policy.difflog(tr.x, tr.u);
-                double creward = rewardf(vectorize(tr.x, tr.u, tr.xn));
-                Rew += df * creward;
+                Rew += df * T * this->phi(vectorize(tr.x, tr.u, tr.xn));
 
                 //Construct basis functions
                 for (unsigned int i = 0; i < dp; ++i)
@@ -517,24 +498,29 @@ public:
             }
 
             fisher += phi * phi.t();
-            g += Rew * phi;
+
+            for(unsigned int i = 0; i < dp; i++)
+                g.col(i) += Rew(i) * phi;
 
         }
 
 
-        arma::vec nat_grad;
+        arma::mat nat_grad(dp+1, dp);
         int rnk = arma::rank(fisher);
-        //        std::cout << rnk << " " << fisher << std::endl;
-        if (rnk == fisher.n_rows)
-        {
-            nat_grad = arma::solve(fisher, g);
-        }
-        else
-        {
-            std::cerr << "WARNING: Fisher Matrix is lower rank (rank = " << rnk << ")!!! Should be " << fisher.n_rows << std::endl;
 
-            arma::mat H = arma::pinv(fisher);
-            nat_grad = H * g;
+        for(unsigned int i = 0; i < dp; i++)
+        {
+            if (rnk == fisher.n_rows)
+            {
+                nat_grad.col(i) = arma::solve(fisher, g.col(i));
+            }
+            else
+            {
+                std::cerr << "WARNING: Fisher Matrix is lower rank (rank = " << rnk << ")!!! Should be " << fisher.n_rows << std::endl;
+
+                arma::mat H = arma::pinv(fisher);
+                nat_grad.col(i) = H * g.col(i);
+            }
         }
 
         return nat_grad.rows(0,dp-1);
@@ -652,37 +638,41 @@ public:
 
         arma::mat A;
 
-        if (atype == IRLGradType::R)
+
+        switch(atype)
         {
+        case R:
             A = ReinforceGradient();
-        }
-        /*else if (atype == IRLGradType::RB)
-        {
+            break;
+        case RB:
             A = ReinforceBaseGradient();
-        }
-        else if (atype == IRLGradType::G)
-        {
+            break;
+
+        case G:
             A = GpomdpGradient();
-        }
-        else if (atype == IRLGradType::GB)
-        {
+            break;
+
+        case GB:
             A = GpomdpBaseGradient();
-        }
-        else if (atype == IRLGradType::ENAC)
-        {
-            A = ENACGradient();
-        }
-        else if ((atype == IRLGradType::NATR) || (atype == IRLGradType::NATRB) ||
-                 (atype == IRLGradType::NATG) || (atype == IRLGradType::NATGB))
-        {
+            break;
+
+        case NATR:
+        case NATRB:
+        case NATG:
+        case NATGB:
             A = NaturalGradient();
-        }
-        else
-        {
+            break;
+
+        case ENAC:
+            A = ENACGradient();
+            break;
+
+
+        default:
             std::cerr << "PGIRL ERROR" << std::endl;
             abort();
-        }*/
-
+            break;
+        }
 
         A.save("/tmp/ReLe/grad.log", arma::raw_ascii);
 
@@ -696,7 +686,7 @@ public:
         int rnkG = rank(A);
         if ( rnkG < dr && A.n_rows >= A.n_cols )
         {
-        	//TODO FIX this....
+            //TODO FIX this....
             // select linearly independent columns
             arma::mat Asub;
             nonZeroIdx = rref(A, Asub);

@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 //  RandomGenerator::seed(8763575);
 
 
-    IRLGradType atype = IRLGradType::R;
+    IRLGradType atype = IRLGradType::RB;
     int nbEpisodes = 3000;
 
     FileManager fm("nls", "PGIRL");
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
     //arma::vec weights2 = irlAlg2.getWeights();
 
 
-    cout << "weights (hessian): " << weights1.t();
+    cout << "weights (pca): " << weights1.t();
     //cout << "weights  (sparse): " << weights2.t();
 
     arma::mat weights(weights1.n_rows, 1);
