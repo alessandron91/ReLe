@@ -77,9 +77,10 @@ public:
     arma::mat ReinforceGradient()
     {
         int dp  = policy.getParametersSize();
+        int dr = phi.rows();
         arma::vec sumGradLog(dp), localg;
-        arma::mat gradient_J(dp, dp, arma::fill::zeros);
-        arma::vec Rew(dp);
+        arma::mat gradient_J(dp, dr, arma::fill::zeros);
+        arma::vec Rew(dr);
 
         int nbEpisodes = data.size();
         for (int i = 0; i < nbEpisodes; ++i)
@@ -131,15 +132,16 @@ public:
     arma::mat ReinforceBaseGradient()
     {
         int dp  = policy.getParametersSize();
+        int dr = phi.rows();
         int nbEpisodes = data.size();
 
         arma::vec sumGradLog(dp), localg;
-        arma::mat gradient_J(dp, dp, arma::fill::zeros);
+        arma::mat gradient_J(dp, dr, arma::fill::zeros);
         arma::vec Rew(dp);
 
-        arma::mat baseline_J_num(dp, dp, arma::fill::zeros);
-        arma::mat baseline_den(dp, dp, arma::fill::zeros);
-        arma::mat return_J_ObjEp(dp, nbEpisodes);
+        arma::mat baseline_J_num(dp, dr, arma::fill::zeros);
+        arma::mat baseline_den(dp, dr, arma::fill::zeros);
+        arma::mat return_J_ObjEp(dr, nbEpisodes);
         arma::mat sumGradLog_CompEp(dp,nbEpisodes);
 
         for (int ep = 0; ep < nbEpisodes; ++ep)
@@ -186,7 +188,7 @@ public:
 
 
             // compute the baselines
-            for (int i = 0; i < dp; ++i)
+            for (int i = 0; i < dr; ++i)
             {
                 baseline_J_num.col(i) += Rew(i) * sumGradLog % sumGradLog;
             }
@@ -200,7 +202,7 @@ public:
         // *** REINFORCE BASE CORE *** //
 
         // compute the gradients
-        for (int i = 0; i < dp; ++i)
+        for (int i = 0; i < dr; ++i)
         {
 
             arma::vec baseline_J(dp, arma::fill::zeros);
@@ -228,8 +230,10 @@ public:
     arma::mat GpomdpGradient()
     {
         int dp  = policy.getParametersSize();
+        int dr = phi.rows();
+
         arma::vec sumGradLog(dp), localg;
-        arma::mat gradient_J(dp, dp, arma::fill::zeros);
+        arma::mat gradient_J(dp, dr, arma::fill::zeros);
 
         int nbEpisodes = data.size();
         for (int i = 0; i < nbEpisodes; ++i)
@@ -254,7 +258,7 @@ public:
                 arma::vec creward = T*phi(vectorize(tr.x, tr.u, tr.xn));
 
                 // compute the gradients
-                for (int i = 0; i < dp; ++i)
+                for (int i = 0; i < dr; ++i)
                 {
                     gradient_J.col(i) += df * creward(i) * sumGradLog;
                 }
@@ -279,6 +283,7 @@ public:
     arma::mat GpomdpBaseGradient()
     {
         int dp  = policy.getParametersSize();
+        int dr = phi.rows();
         int nbEpisodes = data.size();
 
         int maxSteps = 0;
@@ -290,11 +295,11 @@ public:
         }
 
         arma::vec sumGradLog(dp), localg;
-        arma::mat gradient_J(dp, dp, arma::fill::zeros);
+        arma::mat gradient_J(dp, dr, arma::fill::zeros);
 
-        arma::cube baseline_J_num(dp, maxSteps, dp, arma::fill::zeros);
-        arma::cube baseline_den(dp, maxSteps, dp, arma::fill::zeros);
-        arma::cube reward_J_ObjEpStep(nbEpisodes, maxSteps, dp);
+        arma::cube baseline_J_num(dp, maxSteps, dr, arma::fill::zeros);
+        arma::cube baseline_den(dp, maxSteps, dr, arma::fill::zeros);
+        arma::cube reward_J_ObjEpStep(nbEpisodes, maxSteps, dr);
         arma::cube sumGradLog_CompEpStep(dp,nbEpisodes, maxSteps);
         arma::vec  maxsteps_Ep(nbEpisodes);
 
@@ -327,7 +332,7 @@ public:
 
 
                 // compute the baselines
-                for(unsigned int i = 0; i < dp; i++)
+                for(unsigned int i = 0; i < dr; i++)
                 {
                     baseline_J_num.slice(i).col(t) += df * creward(i) * sumGradLog % sumGradLog;
                     baseline_den.slice(i).col(t) += sumGradLog % sumGradLog;
@@ -357,7 +362,7 @@ public:
         {
             for (int t = 0; t < maxsteps_Ep(ep); ++t)
             {
-                for(unsigned int i = 0; i < dp; i++)
+                for(unsigned int i = 0; i < dr; i++)
                 {
                     arma::vec baseline_J(dp, arma::fill::zeros);
                     arma::vec baseline_J_num_t = baseline_J_num.slice(i).col(t);
@@ -380,6 +385,8 @@ public:
     arma::mat NaturalGradient()
     {
         int dp  = policy.getParametersSize();
+        int dr = this->phi.rows();
+
         arma::vec localg;
         arma::mat fisher(dp,dp, arma::fill::zeros);
 
@@ -428,7 +435,7 @@ public:
         }
 
         int rnk = arma::rank(fisher);
-        arma::mat nat_grad(dp, dp);
+        arma::mat nat_grad(dp, dr);
         for(unsigned int i = 0; i < dp; i++)
         {
             if (rnk == fisher.n_rows)
@@ -450,9 +457,11 @@ public:
     arma::mat ENACGradient()
     {
         int dp  = policy.getParametersSize();
+        int dr = this->phi.rows();
+
         arma::vec localg;
-        arma::vec Rew(dp);
-        arma::mat g(dp+1, dp, arma::fill::zeros);
+        arma::vec Rew(dr);
+        arma::mat g(dp+1, dr, arma::fill::zeros);
         arma::vec phi(dp+1);
         arma::mat fisher(dp+1,dp+1, arma::fill::zeros);
         //        double Jpol = 0.0;
@@ -499,7 +508,7 @@ public:
 
             fisher += phi * phi.t();
 
-            for(unsigned int i = 0; i < dp; i++)
+            for(unsigned int i = 0; i < dr; i++)
                 g.col(i) += Rew(i) * phi;
 
         }
@@ -508,7 +517,7 @@ public:
         arma::mat nat_grad(dp+1, dp);
         int rnk = arma::rank(fisher);
 
-        for(unsigned int i = 0; i < dp; i++)
+        for(unsigned int i = 0; i < dr; i++)
         {
             if (rnk == fisher.n_rows)
             {
@@ -622,16 +631,16 @@ public:
         arma::mat phiBar = data.computeEpisodeFeatureExpectation(phi, gamma);
 
         //Principal component analysis
-        if(phiBar.n_rows > dp)
+        /*if(phiBar.n_rows > dp)
         {
             PrincipalComponentAnalysis pca;
             pca.createFeatures(phiBar, dp, false);
             T = pca.getTransformation();
         }
         else
-        {
-            T = arma::mat(dp, dp, arma::fill::eye);
-        }
+        {*/
+            T = arma::mat(dr, dr, arma::fill::eye);
+        //}
 
         std::cout << "T" << std::endl << T << std::endl;
 
@@ -641,59 +650,19 @@ public:
 
         std::cout << "Grads: \n" << A << std::endl;
 
-        ////////////////////////////////////////////////
-        /// PRE-PROCESSING
-        ////////////////////////////////////////////////
-        arma::mat Ared;         //reduced gradient matrix
-        arma::uvec nonZeroIdx;  //nonzero elements of the reward weights
-        int rnkG = rank(A);
-        if ( rnkG < dr && A.n_rows >= A.n_cols )
-        {
-            //TODO FIX this....
-            // select linearly independent columns
-            arma::mat Asub;
-            nonZeroIdx = rref(A, Asub);
-            std::cout << "Asub: \n" << Asub << std::endl;
-            std::cout << "idx: \n" << nonZeroIdx.t()  << std::endl;
-            Ared = A.cols(nonZeroIdx);
-            assert(rank(Ared) == Ared.n_cols);
-        }
-        else
-        {
-            Ared = A;
-            nonZeroIdx.set_size(A.n_cols);
-            std::iota (std::begin(nonZeroIdx), std::end(nonZeroIdx), 0);
-        }
-
-
-        if(nonZeroIdx.n_elem == 1)
-        {
-            arma::vec tmp = arma::zeros(dp);
-            tmp(nonZeroIdx).ones();
-            weights = T.t()*tmp;
-            return;
-        }
-
-
-        Ared.save("/tmp/ReLe/gradRed.log", arma::raw_ascii);
 
         ////////////////////////////////////////////////
         /// GRAM MATRIX AND NORMAL
         ////////////////////////////////////////////////
-        arma::mat gramMatrix = Ared.t() * Ared;
-        unsigned int lastr = gramMatrix.n_rows;
-        arma::mat X = gramMatrix.rows(0, lastr-2) - arma::repmat(gramMatrix.row(lastr-1), lastr-1, 1);
-        X.save("/tmp/ReLe/GM.log", arma::raw_ascii);
+        arma::mat G = A.t() * A;
 
-
-        // COMPUTE NULL SPACE
-        Y = null(X);
-        std::cout << "Y: " << Y << std::endl;
-        Y.save("/tmp/ReLe/NullS.log", arma::raw_ascii);
+        PrincipalComponentAnalysis pca;
+        pca.createFeatures(G, dp, false);
+        arma::mat PC = pca.getTransformation();
 
 
         // prepare the output
-        weights = T.t()*Y;
+        weights = PC.col(dp -1)*PC;
 
 
         //Normalize (L1) weights

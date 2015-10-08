@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 //  RandomGenerator::seed(8763575);
 
 
-    IRLGradType atype = IRLGradType::RB;
+    IRLGradType atype = IRLGradType::R;
     int nbEpisodes = 3000;
 
     FileManager fm("nls", "PGIRL");
