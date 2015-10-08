@@ -713,14 +713,12 @@ public:
         }
         else
         {
-            arma::vec finalP(dr);
+        	weights.set_size(dr);
             for(int i = 0; i + 1 < dr; ++i)
             {
-                finalP(i) = parameters[i];
+            	weights(i) = parameters[i];
             }
-            finalP(dr-1) = arma::sum(finalP.rows(0, dr - 2));
-
-            weights = finalP;
+            weights(dr-1) = 1 - arma::sum(weights.rows(0, dr - 2));
         }
 
         //Normalize (L1) weights

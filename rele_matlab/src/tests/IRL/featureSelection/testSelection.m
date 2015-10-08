@@ -16,10 +16,10 @@ Mpl = licols(M);
 Mrref = M(:,basiccol); 
 
 
-Mpfa
+%Mpfa
 Mpca
-Mpl
-Mrref
+%Mpl
+%Mrref
 
 
 svd(Mpfa)

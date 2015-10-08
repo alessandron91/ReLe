@@ -15,5 +15,9 @@ Mnormalized = M - Mmean;
 
 Mr = U(:, 1:q)'*Mnormalized;
 
+Umatlab = pca(M')
+U
+S
+
 end
 
