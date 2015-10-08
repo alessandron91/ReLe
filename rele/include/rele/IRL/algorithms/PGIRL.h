@@ -44,11 +44,11 @@ public:
     PlaneGIRL(Dataset<ActionC,StateC>& dataset,
               DifferentiablePolicy<ActionC,StateC>& policy,
               BasisFunctions& rewardBasis,
-              double gamma, IRLGradType aType, bool sparse = true)
+              double gamma, IRLGradType aType)
         : policy(policy), data(dataset), rewardBasis(rewardBasis),
-          gamma(gamma), atype(aType), calculator(rewardBasis, dataset, policy, gamma), sparse(sparse)
+          gamma(gamma), atype(aType)
     {
-        nbFunEvals = 0;
+
     }
 
     virtual ~PlaneGIRL()
@@ -673,143 +673,54 @@ public:
         std::cout << "Grads: \n" << A << std::endl;
 
         ////////////////////////////////////////////////
-        /// PRE-PROCESSING
-        ////////////////////////////////////////////////
-        arma::mat Ared;         //reduced gradient matrix
-        arma::uvec nonZeroIdx;  //nonzero elements of the reward weights
-        int rnkG = rank(A);
-        if ( rnkG < dr && A.n_rows >= A.n_cols )
-        {
-            // select linearly independent columns
-            arma::mat Asub;
-            nonZeroIdx = rref(A, Asub);
-            std::cout << "Asub: \n" << Asub << std::endl;
-            std::cout << "idx: \n" << nonZeroIdx.t()  << std::endl;
-            Ared = A.cols(nonZeroIdx);
-            assert(rank(Ared) == Ared.n_cols);
-            //            //save idxs to be set to zero
-            //            arma::vec tmp(A.n_cols);
-            //            std::iota (std::begin(tmp), std::end(tmp), 0);
-            //            std::vector<int> diff;
-            //            std::set_difference(tmp.begin(), tmp.end(), nonZeroIdx.begin(), nonZeroIdx.end(),
-            //                                   std::inserter(diff, diff.begin()));
-            //            zeroIdx.set_size(diff.size());
-            //            for (unsigned int i = 0, ie = diff.size(); i < ie; ++i)
-            //            {
-            //                zeroIdx(i) = diff[i];
-            //            }
-        }
-        else
-        {
-            Ared = A;
-            nonZeroIdx.set_size(A.n_cols);
-            std::iota (std::begin(nonZeroIdx), std::end(nonZeroIdx), 0);
-        }
-
-        if(nonZeroIdx.n_elem == 1)
-        {
-            weights.zeros(A.n_cols);
-            weights(nonZeroIdx).ones();
-            return;
-        }
-
-
-        Ared.save("/tmp/ReLe/gradRed.log", arma::raw_ascii);
-
-        ////////////////////////////////////////////////
         /// GRAM MATRIX AND NORMAL
         ////////////////////////////////////////////////
-        arma::mat gramMatrix = Ared.t() * Ared;
-        //        std::cout << "Gram: \n" << gramMatrix << std::endl;
-        //        arma::mat X(dr-1, dr);
-        //        for (int r = 0; r < dr-1; ++r)
-        //        {
-        //            for (int r2 = 0; r2 < dr; ++r2)
-        //            {
-        //                X(r, r2) = gramMatrix(r2, r) - gramMatrix(r2, dr-1);
-        //            }
-        //        }
-        unsigned int lastr = gramMatrix.n_rows;
-        arma::mat X = gramMatrix.rows(0, lastr-2) - arma::repmat(gramMatrix.row(lastr-1), lastr-1, 1);
-        //        std::cerr << std::endl << "X: " << X;
-        X.save("/tmp/ReLe/GM.log", arma::raw_ascii);
+        G = A.t() * A;
+
+        //setup optimization algorithm
+        nlopt::opt optimizator;
+
+        optimizator = nlopt::opt(nlopt::algorithm::LN_COBYLA, dr -1);
+        optimizator.set_min_objective(PlaneGIRL::wrapper, this);
+
+        unsigned int maxFunEvals = 0;
+        if (maxFunEvals == 0)
+            maxFunEvals = std::min(50*dr, 600);
 
 
-        // COMPUTE NULL SPACE
-        Y = null(X);
-        std::cout << "Y: " << Y << std::endl;
-        Y.save("/tmp/ReLe/NullS.log", arma::raw_ascii);
+        optimizator.set_xtol_rel(1e-8);
+        optimizator.set_ftol_rel(1e-8);
+        optimizator.set_ftol_abs(1e-8);
+        optimizator.set_maxeval(maxFunEvals);
+        optimizator.add_inequality_constraint(PlaneGIRL::wrapper_constr, this, 1e-6);
+        std::vector<double> low(dr -1, 0.0);
+        std::vector<double> high(dr -1, 1.0);
+        optimizator.set_lower_bounds(low);
+        optimizator.set_upper_bounds(high);
 
 
-        // prepare the output
-        // reset weights
-        weights.zeros(A.n_cols);
+        //optimize function
+        arma::vec wStart(dr - 1, arma::fill::ones);
+        wStart /= dr;
+        std::vector<double> parameters = arma::conv_to<std::vector<double>>::from(wStart);
 
+        double minf;
 
-        if (Y.n_cols > 1)
+        if (optimizator.optimize(parameters, minf) < 0)
         {
-            ////////////////////////////////////////////////
-            /// POST-PROCESSING (IF MULTIPLE SOLUTIONS)
-            ////////////////////////////////////////////////
-
-            //setup optimization algorithm
-            nlopt::opt optimizator;
-            int nbOptParams = Y.n_cols;
-
-            if(sparse)
-            {
-                optimizator = nlopt::opt(nlopt::algorithm::LN_COBYLA, nbOptParams);
-                optimizator.set_min_objective(PlaneGIRL::wrapper, this);
-            }
-            else
-            {
-                optimizator = nlopt::opt(nlopt::algorithm::LN_COBYLA, nbOptParams);
-                optimizator.set_min_objective(PlaneGIRL::wrapperHessian, this);
-            }
-
-
-            unsigned int maxFunEvals = 0;
-            nbFunEvals = 0;
-            if (maxFunEvals == 0)
-                maxFunEvals = std::min(50*nbOptParams, 600);
-
-
-            optimizator.set_xtol_rel(1e-8);
-            optimizator.set_ftol_rel(1e-8);
-            optimizator.set_ftol_abs(1e-8);
-            optimizator.set_maxeval(maxFunEvals);
-            optimizator.add_equality_constraint(PlaneGIRL::wrapper_constr, this, 1e-6);
-
-
-
-            //optimize function
-            arma::vec wStart(dr, arma::fill::ones);
-            wStart /= arma::sum(wStart);
-            arma::vec xStart = arma::pinv(Y)*wStart;
-            std::vector<double> parameters = arma::conv_to<std::vector<double>>::from(xStart);
-
-            double minf;
-
-            if (optimizator.optimize(parameters, minf) < 0)
-            {
-                printf("nlopt failed!\n");
-                abort();
-            }
-            else
-            {
-                //            printf("found minimum = %0.10g\n", minf);
-                arma::vec finalP(nbOptParams);
-                for(int i = 0; i < nbOptParams; ++i)
-                {
-                    finalP(i) = parameters[i];
-                }
-
-                weights(nonZeroIdx) = Y*finalP;
-            }
+            printf("nlopt failed!\n");
+            abort();
         }
         else
         {
-            weights(nonZeroIdx) = Y;
+            arma::vec finalP(dr);
+            for(int i = 0; i + 1 < dr; ++i)
+            {
+                finalP(i) = parameters[i];
+            }
+            finalP(dr-1) = arma::sum(finalP.rows(0, dr - 2));
+
+            weights = finalP;
         }
 
         //Normalize (L1) weights
@@ -823,191 +734,41 @@ public:
     static double wrapper_constr(unsigned int n, const double* x, double* grad,
                                  void* o)
     {
-        return reinterpret_cast<PlaneGIRL*>(o)->oneSumConstraint(n, x, grad);
+        return reinterpret_cast<PlaneGIRL*>(o)->simplexConstraint(n, x, grad);
     }
 
-    double oneSumConstraint(unsigned int n, const double *x, double *grad)
+    double simplexConstraint(unsigned int n, const double *x, double *grad)
     {
-        grad = nullptr;
         arma::vec w(x,n);
-        arma::vec p = Y*w;
-        double val = arma::norm(p,1) - 1.0;
+        double constraint =  arma::sum(w) - 1;
 
-        if(grad != nullptr)
-        {
-            arma::vec dS(grad, n, false, true);
-            arma::vec dS_w(Y.n_rows, arma::fill::zeros);
-            dS = Y.t()*dS_w;
-            std::cout << "dS = " << dS.t() << std::endl;
-        }
+        std::cout << "constraints = " << constraint << std::endl;
 
-        std::cout << "sum = " << val << std::endl;
-
-        return val;
+        return constraint;
     }
 
     static double wrapper(unsigned int n, const double* x, double* grad,
                           void* o)
     {
-        return reinterpret_cast<PlaneGIRL*>(o)->objFunction(n, x, grad);
+        arma::vec par(n + 1);
+        double sum = 0;
+
+        for(unsigned int i = 0; i < n; i++)
+        {
+        	par(i) = x[i];
+        	sum += x[i];
+        }
+
+        par(n) = 1 - sum;
+
+        std::cout << "w = " << par.t() << std::endl;
+        return reinterpret_cast<PlaneGIRL*>(o)->objFunction(par);
     }
 
-    double objFunction(unsigned int n, const double* x, double* grad)
+    double objFunction(const arma::vec& x)
     {
-
-        ++nbFunEvals;
-
-        arma::vec w(x,n);
-        arma::vec p = Y*w;
-
-        if (grad != nullptr)
-        {
-            abort();
-        }
-
-        double norm1_2 = 0.0;
-        for (unsigned int i = 0, ie = p.n_elem; i < ie; ++i)
-        {
-            norm1_2 += sqrt(abs(p(i)));
-        }
-        norm1_2 *= norm1_2;
-        //        std::cerr << norm1_2 << std::endl;
-        return norm1_2;
-
+        return arma::norm(G*x);
     }
-
-    static double wrapperHessian(unsigned int n, const double* x, double* grad,
-                                 void* o)
-    {
-        arma::vec dLambda(grad, n, false, true);
-        arma::vec parV(const_cast<double*>(x), n, true);
-        double value = reinterpret_cast<PlaneGIRL*>(o)->objFunctionHessian(parV, dLambda, grad != nullptr);
-
-        if(grad != nullptr && arma::norm(dLambda) != 0)
-            dLambda /= arma::norm(dLambda);
-
-
-        std::cout << "x = " << parV.t();
-        std::cout << "w = " << parV.t()*reinterpret_cast<PlaneGIRL*>(o)->Y.t();
-        if(grad != nullptr)
-            std::cout << "dx= " << dLambda.t();
-        std::cout << "v = " << value << std::endl;
-        return value;
-    }
-
-    double objFunctionHessian(const arma::vec& x, arma::vec& dLambda, bool computeGradient)
-    {
-        ++nbFunEvals;
-
-        arma::vec w = Y*x;
-
-
-        arma::mat H = calculator.computeHessian(w);
-
-        std::cout << "det(H) = " << arma::det(H) << std::endl;
-
-        arma::vec lambda;
-        arma::mat v;
-
-        arma::eig_sym(lambda, v, H);
-
-        if(computeGradient)
-        {
-            arma::cube Hdiff = calculator.getHessianDiff();
-            const arma::vec& v0 = v.col(0);
-
-            arma::vec dLambda_dw(Hdiff.n_slices);
-
-            for(unsigned int s = 0; s < Hdiff.n_slices; s++)
-                dLambda_dw(s) = arma::as_scalar(v0.t()*Hdiff.slice(s)*v0);
-
-            dLambda = Y.t()*dLambda_dw;
-            std::cout << "dLambda = " << dLambda.t() << std::endl;
-
-        }
-
-        std::cout << "H = " << H;
-        std::cout << "eigval = " << lambda.t();
-        std::cout << "eigvec = " << v;
-        return lambda(0);
-
-    }
-
-private:
-    class HessianCalculator
-    {
-    public:
-        HessianCalculator(BasisFunctions& basis,
-                          Dataset<ActionC,StateC>& data,
-                          DifferentiablePolicy<ActionC,StateC>& policy,
-                          double gamma)
-        {
-            computeHessianDiff(basis, data, policy, gamma);
-        }
-
-        arma::mat computeHessian(const arma::vec& w)
-        {
-            arma::mat H(Hdiff.n_rows, Hdiff.n_cols, arma::fill::zeros);
-
-            for(unsigned int i = 0; i < Hdiff.n_slices; i++)
-            {
-                H += Hdiff.slice(i)*w(i);
-            }
-
-            return H;
-
-        }
-
-        arma::cube getHessianDiff()
-        {
-            return Hdiff;
-        }
-
-    private:
-        void computeHessianDiff(BasisFunctions& basis,
-                                Dataset<ActionC,StateC>& data,
-                                DifferentiablePolicy<ActionC,StateC>& policy,
-                                double gamma)
-        {
-            unsigned int parameterSize = policy.getParametersSize();
-            Hdiff.zeros(parameterSize, parameterSize, basis.size());
-
-            for(unsigned int ep = 0; ep < data.getEpisodesNumber(); ep++)
-            {
-                Episode<ActionC,StateC>& episode = data[ep];
-                double df = 1.0;
-
-                for (unsigned int t = 0; t < episode.size(); t++)
-                {
-                    Transition<ActionC,StateC>& tr = episode[t];
-                    arma::mat K = computeK(policy, tr);
-
-                    for(unsigned int f = 0; f < basis.size(); f++)
-                    {
-                        BasisFunction& bf = *basis[f];
-                        double phi = bf(vectorize(tr.x, tr.u, tr.xn));
-                        Hdiff.slice(f) += df*K*phi;
-                    }
-
-                    df *= gamma;
-
-                }
-            }
-
-        }
-
-        arma::mat computeK(DifferentiablePolicy<ActionC,StateC>& policy,
-                           Transition<ActionC,StateC>& tr)
-        {
-            arma::vec logDiff = policy.difflog(tr.x, tr.xn);
-            arma::mat logDiff2 = policy.diff2log(tr.x, tr.xn);
-            return logDiff2 + logDiff*logDiff.t();
-        }
-
-
-    private:
-        arma::cube Hdiff;
-    };
 
 protected:
     Dataset<ActionC,StateC>& data;
@@ -1016,11 +777,7 @@ protected:
     double gamma;
     arma::vec weights;
     IRLGradType atype;
-    unsigned int nbFunEvals;
-    arma::mat Y;
-
-    bool sparse;
-    HessianCalculator calculator;
+    arma::mat G;
 
 
 };

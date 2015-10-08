@@ -16,9 +16,9 @@ zc = 0.1*zc;
 
 %% plot trajectories of imitator
 
-titles{1} = 'Imitator 1 - Hessian';
-titles{2} = 'Imitator 2 - Sparse';
-lastindex = 2;
+titles{1} = 'Imitator';
+%titles{2} = 'Imitator 2 - Sparse';
+lastindex = 1;
 
 
 for i = 1:lastindex
