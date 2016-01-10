@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Rele by AIRLab-POLIMI</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Rele</h1>
+        <p>Reinforcement Learning Library of Politecnico di Milano</p>
+
+        <p class="view"><a href="https://github.com/AIRLab-POLIMI/ReLe">View the Project on GitHub <small>AIRLab-POLIMI/ReLe</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/AIRLab-POLIMI/ReLe/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/AIRLab-POLIMI/ReLe/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/AIRLab-POLIMI/ReLe">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="rele-" class="anchor" href="#rele-" aria-hidden="true"><span class="octicon octicon-link"></span></a>ReLe <a href="http://131.175.56.232:8080/job/ReLe-CI/"><img src="http://131.175.56.232:8080/buildStatus/icon?job=ReLe-CI" alt="Build Status"></a>
+</h1>
+
+<p>Reinforcement Learning Library of Politecnico di Milano</p>
+
+<h2>
+<a id="external-dependencies" class="anchor" href="#external-dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>External dependencies</h2>
+
+<p>To properly compile the ReLe library you must install</p>
+
+<ul>
+<li>
+<a href="http://arma.sourceforge.net/">Armadillo</a> (&gt;=6.1)</li>
+<li><a href="http://ab-initio.mit.edu/wiki/index.php/NLopt">NLopt</a></li>
+<li>
+<a href="http://www.boost.org/">Boost</a> (&gt;= 1.53)</li>
+</ul>
+
+<p>For example, in many Linux distributions you can use the package manager to install them.</p>
+
+<p><strong>Ubuntu</strong></p>
+
+<pre><code>apt-get install libboost-dev libboost-all-dev libnlopt-dev liblapack-dev libarmadillo-dev
+</code></pre>
+
+<p><strong>Fedora</strong></p>
+
+<pre><code>yum install boost-devel armadillo-devel openblas-devel lapack-devel
+</code></pre>
+
+<h2>
+<a id="compiling" class="anchor" href="#compiling" aria-hidden="true"><span class="octicon octicon-link"></span></a>COMPILING</h2>
+
+<p>The system can be build using the ros build tool <code>catkin</code>. Just create a catkin workspace, put the content of this repository in the src repository and run <code>catkin_make</code> to build the system.
+check <a href="http://ros.org/wiki/catkin/Tutorials/create_a_workspace">this</a> tutorial to get more info on catkin.</p>
+
+<p>The ReLe core library can be build also using plain cmake (without catkin). To build the core library, use the following commands:</p>
+
+<pre><code>mkdir ReLe
+mkdir ReLe/build
+mkdir ReLe/src
+cd ReLe/src
+git clone https://github.com/AIRLab-POLIMI/ReLe.git .
+cd ../build
+cmake ../src/rele
+make
+</code></pre>
+
+<p>Ros features will be disabled.
+Currently plain cmake installation is not supported.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/AIRLab-POLIMI">AIRLab-POLIMI</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
