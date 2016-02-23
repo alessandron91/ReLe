@@ -89,7 +89,7 @@ void WQ_Learning::step(const Reward& reward, const FiniteState& nextState,
     double target;
     if(weightsVar(x, u) > 0)
     {
-        arma::vec integrals(task.finiteActionDim, arma::fill::zeros);
+        integrals.zeros(task.finiteActionDim);
         pars p;
         p.xn = (unsigned int) xn;
         p.meanQ = meanQ;

@@ -63,6 +63,7 @@ protected:
     arma::mat weightsVar;
     arma::mat Q2;
     arma::mat n_updates;
+    arma::vec integrals;
 
 protected:
     virtual void init() override;
