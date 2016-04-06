@@ -21,135 +21,80 @@
  *  along with rele.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rele/algorithms/td/WQ-Learning.h"
+#include "rele/algorithms/td/WQ-Learning_WP.h"
+#include "rele/utils/RandomGenerator.h"
 
-using namespace std;
+#include <sstream>
+#include <cassert>
+
 using namespace arma;
+using namespace std;
 
-namespace ReLe
-{
+namespace ReLe {
+WQ_Learning_WP::WQ_Learning_WP(LearningRate& alpha) :
+		WQ_Learning(policy,alpha) {
 
-WQ_Learning::WQ_Learning(ActionValuePolicy<FiniteState>& policy, LearningRate& alpha) :
-    Q_Learning(policy, alpha)
-{
 }
 
-void WQ_Learning::initEpisode(const FiniteState& state, FiniteAction& action)
-{
-    sampleAction(state, action);
+void WQ_Learning_WP::step(const Reward& reward, const FiniteState& nextState,
+		FiniteAction& action) {
+
+auto state=this->x;
+ WQ_Learning::step(reward,nextState,action);
+ policy.setProbabilities(state,integrals);
+
 }
 
-void WQ_Learning::sampleAction(const FiniteState& state, FiniteAction& action)
-{
-    x = state.getStateN();
-    u = policy(x);
-
-    action.setActionN(u);
+WQ_Learning_WP::WPolicy::WPolicy() {
+	initialized = false;
+	Q = nullptr;
+	//nactions = 0;
+	testMode = false;
 }
 
-void WQ_Learning::step(const Reward& reward, const FiniteState& nextState,
-                       FiniteAction& action)
-{
-    size_t xn = nextState.getStateN();
-    double r = reward[0];
+WQ_Learning_WP::WPolicy::~WPolicy() {
 
-    arma::vec integrals(task.finiteActionDim, arma::fill::zeros);
-    for(unsigned int i = 0; i < integrals.n_elem; i++)
-    {
-        arma::vec means = Q.row(xn).t();
-        arma::vec sigma = sampleStdQ.row(xn).t();
-        double pdfMean = means(i);
-        double pdfSampleStd = sigma(i);
-        double lowerLimit = pdfMean - sigmaBound * pdfSampleStd;
-        double upperLimit = pdfMean + sigmaBound * pdfSampleStd;
-
-        arma::vec trapz = arma::linspace(lowerLimit, upperLimit, nTrapz + 1);
-        double diff = trapz(1) - trapz(0);
-
-        double result = 0;
-        for(unsigned int t = 0; t < trapz.n_elem - 1; t++)
-        {
-            arma::vec cdfs(idxs.n_cols, arma::fill::zeros);
-            for(unsigned int j = 0; j < cdfs.n_elem; j++)
-            {
-                boost::math::normal cdfNormal(means(idxs(i, j)), sigma(idxs(i, j)));
-                cdfs(j) = cdf(cdfNormal, trapz(t));
-            }
-            boost::math::normal pdfNormal(pdfMean, pdfSampleStd);
-            double t1 = pdf(pdfNormal, trapz(t)) * arma::prod(cdfs);
-
-            for(unsigned int j = 0; j < cdfs.n_elem; j++)
-            {
-                boost::math::normal cdfNormal(means(idxs(i, j)), sigma(idxs(i, j)));
-                cdfs(j) = cdf(cdfNormal, trapz(t + 1));
-            }
-            double t2 = pdf(pdfNormal, trapz(t + 1)) * arma::prod(cdfs);
-
-            result += (t1 + t2) * diff * 0.5;
-        }
-
-        integrals(i) = result;
-    }
-
-    double W = arma::dot(Q.row(xn), integrals);
-
-    double target = r + task.gamma * W;
-
-    updateMeanAndSampleStdQ(target);
-
-    x = xn;
-    u = policy(xn);
-
-    action.setActionN(u);
 }
 
-void WQ_Learning::endEpisode(const Reward& reward)
-{
-    double r = reward[0];
-    double target = r;
+void WQ_Learning_WP::WPolicy::initialization() {
+	if (!initialized) {
+		int nstates = Q->n_rows;
+		int actions = Q->n_cols;
 
-    updateMeanAndSampleStdQ(target);
+		probabilities = arma::mat(nstates, actions, arma::fill::ones)
+				* (double) 1 / actions;
+		initialized = true;
+	}
+
 }
 
-WQ_Learning::~WQ_Learning()
-{
+unsigned int WQ_Learning_WP::WPolicy::operator()(const size_t& state) {
+	initialization();
+	unsigned int un;
+
+	// const rowvec& Qx = Q->row(state);
+
+	int x = (unsigned int) state;
+	std::vector<double> prob(nactions);
+	for (int i = 0; i < nactions; i++) {
+		prob[i] = this->probabilities(x, i);
+	}
+	un = RandomGenerator::sampleDiscrete(prob);
+
+	return un;
 }
 
-void WQ_Learning::init()
-{
-    FiniteTD::init();
+double WQ_Learning_WP::WPolicy::operator()(const size_t& state,
+		const unsigned int& action) {
 
-    idxs = arma::mat(task.finiteActionDim, task.finiteActionDim - 1, arma::fill::zeros);
-    arma::vec actions = arma::linspace(0, idxs.n_cols, idxs.n_rows);
-    for(unsigned int i = 0; i < idxs.n_rows; i++)
-        idxs.row(i) = actions(arma::find(actions != i)).t();
-
-    sampleStdQ = Q + stdInfValue;
-    Q2 = Q;
-    weightsVar = Q;
-    nUpdates = Q;
+	return probabilities(state, action);
 }
 
-inline void WQ_Learning::updateMeanAndSampleStdQ(double target)
-{
-    double alpha = this->alpha(x, u);
-    Q(x, u) = (1 - alpha) * Q(x, u) + alpha * target;
-    Q2(x, u) = (1 - alpha) * Q2(x, u) + alpha * target * target;
+void WQ_Learning_WP::WPolicy::setProbabilities(unsigned int state,
+		arma::vec prob) {
+	//this->probabilities(x,u)=prob(x,u);
+	probabilities.row(state) = prob.t();
 
-    nUpdates(x, u)++;
-
-    if(nUpdates(x, u) > 1)
-    {
-        weightsVar(x, u) = (1 - alpha) * (1 - alpha) * weightsVar(x, u) + alpha * alpha;
-        double n = 1 / weightsVar(x, u);
-
-        double var = (Q2(x, u) - Q(x, u) * Q(x, u)) / n;
-
-        if(var >= stdZeroValue * stdZeroValue)
-            sampleStdQ(x, u) = sqrt(var);
-        else
-            sampleStdQ(x, u) = stdZeroValue;
-    }
 }
 
 }
