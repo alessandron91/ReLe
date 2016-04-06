@@ -21,9 +21,6 @@
  *  along with rele.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Written by: Carlo D'Eramo
- */
 
 #ifndef INCLUDE_RELE_ALGORITHMS_TD_WQ_LEARNING_H_
 #define INCLUDE_RELE_ALGORITHMS_TD_WQ_LEARNING_H_
@@ -31,13 +28,6 @@
 #include "rele/algorithms/td/Q-Learning.h"
 #include <boost/math/distributions/normal.hpp>
 
-#define STD_ZERO_VALUE 1E-5
-#define STD_INF_VALUE 1E10
-
-
-/*
- * This is a first implementation of an experimental estimator for Q-Learning.
- */
 
 namespace ReLe
 {

@@ -21,42 +21,10 @@
  *  along with rele.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Written by: Carlo D'Eramo
- */
-
 #include "rele/algorithms/td/WQ-Learning.h"
 
 using namespace std;
 using namespace arma;
-
-
-struct pars
-{
-    unsigned int xn;
-    unsigned int u;
-    arma::mat idxs;
-    arma::mat meanQ;
-    arma::mat sampleStdQ;
-};
-
-double fun(double x, void* params)
-{
-    pars p = *(pars*) params;
-    const unsigned int xn = p.xn;
-    const unsigned int u = p.u;
-    const arma::mat& idxs = p.idxs;
-    const arma::mat& meanQ = p.meanQ;
-    const arma::mat& sampleStdQ = p.sampleStdQ;
-
-    arma::vec cdf(idxs.n_cols, arma::fill::zeros);
-    for(unsigned int i = 0; i < cdf.n_elem; i++)
-        cdf(i) = gsl_cdf_gaussian_P(x - meanQ(xn, idxs(u, i)), sampleStdQ(xn, idxs(u, i)));
-    double f = gsl_ran_gaussian_pdf(x - meanQ(xn, u), sampleStdQ(xn, u)) * arma::prod(cdf);
-
-    return f;
-}
-
 
 namespace ReLe
 {
@@ -119,12 +87,9 @@ void WQ_Learning::step(const Reward& reward, const FiniteState& nextState,
 
             result += (t1 + t2) * diff * 0.5;
         }
-        integrals(integrals.n_elem - 1) = 1 - arma::sum(integrals(arma::span(0, integrals.n_elem - 2)));
 
         integrals(i) = result;
     }
-    else
-        target = r;
 
     double W = arma::dot(Q.row(xn), integrals);
 
@@ -132,17 +97,14 @@ void WQ_Learning::step(const Reward& reward, const FiniteState& nextState,
 
     updateMeanAndSampleStdQ(target);
 
-    //update action and state
     x = xn;
     u = policy(xn);
 
-    //set next action
     action.setActionN(u);
 }
 
 void WQ_Learning::endEpisode(const Reward& reward)
 {
-    //Last update
     double r = reward[0];
     double target = r;
 
