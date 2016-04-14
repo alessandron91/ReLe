@@ -16,3 +16,6 @@ target_link_libraries(mountain_car rele)
 
 add_executable(forex ForexTest.cpp)
 target_link_libraries(forex rele)
+
+add_executable(swing_pendulum SwingPendulumTest.cpp)
+target_link_libraries(swing_pendulum rele)
