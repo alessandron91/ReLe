@@ -64,9 +64,9 @@ public:
     {
     }
 
-    virtual void init(Dataset<ActionC, DenseState>& data, double gamma) override
+    virtual void init(Dataset<ActionC, DenseState>& data, EnvironmentSettings& envSettings) override
     {
-        critic = new LSTDQ<ActionC>(data, policy, phi, gamma);
+        critic = new LSTDQ<ActionC>(data, policy, phi, envSettings.gamma);
     }
 
     virtual void step() override
@@ -121,7 +121,7 @@ public:
 
     virtual Policy<ActionC, DenseState>* getPolicy() override
     {
-        // FIXME
+        //TODO [INTERFACE] fix interface implementation for batch methods...
         return nullptr;
     }
 

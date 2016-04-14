@@ -25,6 +25,7 @@
 #include "rele/core/FiniteMDP.h"
 #include "rele/algorithms/td/SARSA.h"
 #include "rele/algorithms/td/DoubleQ-Learning.h"
+#include "rele/algorithms/td/WQ-Learning.h"
 #include "rele/core/Core.h"
 #include "rele/generators/GridWorldGenerator.h"
 #include "rele/policy/q_policy/e_Greedy.h"
@@ -37,7 +38,7 @@ using namespace ReLe;
 
 int main(int argc, char *argv[])
 {
-    if (argc > 1)
+    if(argc > 1)
     {
         GridWorldGenerator generator;
         generator.load(argv[1]);
@@ -46,16 +47,14 @@ int main(int argc, char *argv[])
 
         e_Greedy policy;
         ConstantLearningRate alpha(0.2);
-        // SARSA_lambda agent(policy, false);
-        // SARSA agent(policy);
-        //Q_Learning agent(policy);
-        DoubleQ_Learning agent(policy, alpha);
+        //Q_Learning agent(policy, alpha);
+        //DoubleQ_Learning agent(policy, alpha);
+        WQ_Learning agent(policy, alpha);
 
         auto&& core = buildCore(mdp, agent);
 
         core.getSettings().episodeLength = 100000;
-        //core.getSettings().loggerStrategy = new WriteStrategy<FiniteAction, FiniteState>("/home/dave/prova.txt");
-        //core.getSettings().loggerStrategy = new PrintStrategy<FiniteAction, FiniteState>(false);
+        core.getSettings().loggerStrategy = new PrintStrategy<FiniteAction, FiniteState>(false);
 
         for(unsigned int i = 0; i < 10000; i++)
         {

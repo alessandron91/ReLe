@@ -61,7 +61,7 @@ public:
      *
      * \return a randomly generated point
      */
-    virtual arma::vec operator() () = 0;
+    virtual arma::vec operator() () const = 0;
 
     /*!
      * Return the probability of a point to be generated
@@ -69,13 +69,25 @@ public:
      * \param point a point to be evaluated
      * \return the probability of the point
      */
-    virtual double operator() (arma::vec& point) = 0;
+    virtual double operator() (const arma::vec& point) const = 0;
+
+    /*!
+     * Return the logarithm of the probability of a point to
+     * be generated from the distribution.
+     * \param point a point to be evaluated
+     * \return the logarithm of the probability of the point
+     */
+    virtual double logPdf(const arma::vec& point) const
+    {
+        auto& self = *this;
+        return self(point);
+    }
 
     /*!
      * Getter.
      * \return The size of the support
      */
-    inline unsigned int getPointSize()
+    inline unsigned int getPointSize() const
     {
         return pointSize;
     }
@@ -84,7 +96,25 @@ public:
      * Getter.
      * \return the name of the distribution
      */
-    virtual std::string getDistributionName() = 0;
+    virtual std::string getDistributionName() const = 0;
+
+    /*!
+     * Getter.
+     * \return the distribution mean
+     */
+    virtual arma::mat getMean() const = 0;
+
+    /*!
+     * Getter.
+     * \return the distribution covariance
+     */
+    virtual arma::mat getCovariance() const = 0;
+
+    /*!
+     * Getter.
+     * \return the distribution mode
+     */
+    virtual arma::mat getMode() const = 0;
 
     /*!
      * This method implements the weighted maximum likelihood estimate of
@@ -126,9 +156,19 @@ public:
      * Getter.
      * \return The size of the parameters
      */
-    virtual unsigned int getParametersSize() = 0;
+    virtual unsigned int getParametersSize() const = 0;
 
-    virtual arma::vec getParameters() = 0;
+    /*!
+     * Getter.
+     * \return The parameters vector
+     */
+    virtual arma::vec getParameters() const = 0;
+
+    /*!
+     * Setter.
+     * \param parameters The new parameters of the distribution.
+     */
+    virtual void setParameters(const arma::vec& parameters) = 0;
 
     /*!
      * Update the internal parameters according to the
@@ -136,7 +176,7 @@ public:
      *
      * \param increment a vector of increment value for each component
      */
-    virtual void update(arma::vec& increment) = 0;
+    virtual void update(const arma::vec& increment) = 0;
 
     /*!
      * Compute the gradient of the logarithm of the distribution
@@ -144,8 +184,7 @@ public:
      * \param point the point where the gradient is evaluated
      * \return the gradient vector
      */
-    virtual arma::vec difflog(const arma::vec& point) = 0;
-
+    virtual arma::vec difflog(const arma::vec& point) const = 0;
 
     /*!
      * Compute the hessian (\f$d(d\log D)^{T}\f$) of the logarithm of the
@@ -153,7 +192,19 @@ public:
      * \param point the point where the hessian is evaluated
      * \return the hessian matrix (out)
      */
-    virtual arma::mat diff2log(const arma::vec& point) = 0;
+    virtual arma::mat diff2log(const arma::vec& point) const = 0;
+
+    /*!
+     * Compute the gradient of the logarithm of the distribution
+     * in the current params w.r.t. the given point.
+     * differently from difflog, the computed gradient is not the parameter's
+     * gradient, but the input gradient, i.e. how much the probability changes
+     * if the input changes.
+     * \param point the point where the gradient is evaluated
+     * \return the gradient vector
+     */
+    virtual arma::vec pointDifflog(const arma::vec& point) const = 0;
+
 
 };
 
@@ -174,12 +225,12 @@ public:
     /*!
      * Computes the fisher information matrix of the distribution.
      */
-    virtual arma::sp_mat FIM() = 0;
+    virtual arma::sp_mat FIM() const = 0;
 
     /*!
      * Computes the inverse of the fisher information matrix.
      */
-    virtual arma::sp_mat inverseFIM() = 0;
+    virtual arma::sp_mat inverseFIM() const = 0;
 };
 
 } //end namespace

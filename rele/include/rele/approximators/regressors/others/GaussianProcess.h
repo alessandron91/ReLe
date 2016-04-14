@@ -72,26 +72,27 @@ public:
      */
     GaussianProcess_(Features_<InputC, denseOutput>& phi, CovFunctionLabel covFunction = rbf) :
         BatchRegressor_<InputC, arma::vec, denseOutput>(phi),
-        trained(false),
         covFunction(covFunction)
     {
+        hParams.lengthScale = arma::vec(phi.rows(), arma::fill::ones) * hParams.lengthScale(0);
     }
 
     /*!
-     * Compute the mean value(s) of the function in the given point(s).
-     * \param testInputs vector of inputs
-     * \return the vector of means for each input
+     * Compute the mean and variance of the function in the given point.
+     * \param testInput vector of input
+     * \return the vector with mean and variance
      */
     virtual arma::vec operator()(const InputC& testInputs) override
     {
         arma::mat testFeatures = this->phi(testInputs);
-        arma::vec outputs(testFeatures.n_cols, arma::fill::zeros);
+        arma::vec outputs(2, arma::fill::zeros);
 
-        for(unsigned int i = 0; i < outputs.n_elem; i++)
-        {
-            arma::vec k = generateCovVector(features, testFeatures.col(i));
-            outputs(i) = arma::dot(k.t(), alpha);
-        }
+        arma::vec k = generateCovVector(features, testFeatures.col(0));
+        outputs(0) = arma::dot(k.t(), alpha);
+
+        arma::vec v = arma::solve(L, k);
+        outputs(1) = computeKernel(testFeatures.col(0), testFeatures.col(0)) -
+                     arma::dot(v.t(), v);
 
         return outputs;
     }
@@ -110,8 +111,6 @@ public:
 
         L = arma::chol(K, "lower");
         alpha = arma::solve(L.t(), arma::solve(L, outputs));
-
-        trained = true;
     }
 
     /*!
@@ -134,34 +133,12 @@ public:
         {
             arma::vec yHat = self(features.col(i));
 
-            J += arma::norm(y.row(i).t() - yHat);
+            J += arma::norm(y.row(i).t() - yHat(0));
         }
 
         J /= 2 * nSamples;
 
         return J;
-    }
-
-    /*!
-     * Compute the variance(s) of the Gaussian Process at the given point(s).
-     * \param testInputs vector of inputs
-     * \return the vector of variances for each input
-     */
-    arma::vec computeVariance(const InputC& testInputs)
-    {
-        arma::mat testFeatures = this->phi(testInputs);
-        arma::vec variances(testFeatures.n_cols, arma::fill::zeros);
-
-        for(unsigned int i = 0; i < variances.n_elem; i++)
-        {
-            arma::vec k = generateCovVector(features, testFeatures.col(i));
-            arma::vec v = arma::solve(L, k);
-
-            variances(i) = computeKernel(testFeatures.col(i), testFeatures.col(i)) -
-                           arma::dot(v.t(), v);
-        }
-
-        return variances;
     }
 
     /*!
@@ -175,69 +152,12 @@ public:
     }
 
     /*!
-     * Train hyperparameters to maximize the marginal likelihood.
-     */
-    void trainHyperParameters()
-    {
-        // TODO
-    }
-
-    /*!
-     * Sample point(s) from the prior Gaussian Process at the given input point(s).
-     * We follow the common way to sample point(s) from a prior Gaussian Process setting
-     * the mean vector of the multivariate Gaussian distribution to a zero vector.
-     * \param testInputs vector of inputs
-     * \return the vector of points sampled from the model at each input point
-     */
-    arma::vec sampleFromPrior(const InputC& testInputs)
-    {
-        arma::mat testFeatures = this->phi(testInputs);
-        arma::vec samples(testFeatures.n_cols, arma::fill::zeros);
-
-        // TODO
-
-        return samples;
-    }
-
-    /*!
-     * Sample point(s) from the posterior Gaussian Process at the given input point(s).
-     * This can be done only once that the model has been trained.
-     * \param testInputs vector of inputs
-     * \return the vector of points sampled from the model at each input point
-     */
-    arma::vec sampleFromPosterior(const InputC& testInputs)
-    {
-        arma::mat testFeatures = this->phi(testInputs);
-        arma::vec samples(testFeatures.n_cols, arma::fill::zeros);
-
-        // TODO
-        /*if(isTrained)
-        {
-
-        }
-        else
-        	std::cout << "It is not possible to sample from the posterior distribution "
-        		"before training the model!" << std::endl;*/
-
-        return samples;
-    }
-
-    /*!
      * Getter.
      * \return the hyperparameters of the model
      */
     HyperParameters& getHyperParameters()
     {
         return hParams;
-    }
-
-    /*!
-     * Getter.
-     * \return the bool value indicating whether the model has been trained
-     */
-    bool isTrained()
-    {
-        return trained;
     }
 
     virtual ~GaussianProcess_()
@@ -249,7 +169,6 @@ protected:
     arma::vec alpha;
     typename input_traits<denseOutput>::type features;
     arma::vec outputs;
-    bool trained;
     HyperParameters hParams;
     CovFunctionLabel covFunction;
 
@@ -280,12 +199,12 @@ protected:
     {
         double k = 0;
         arma::mat M(x_p.n_elem, x_p.n_elem, arma::fill::zeros);
-        M.diag() = 1 / (hParams.lengthScale * hParams.lengthScale);
+        M.diag() = 1 / (hParams.lengthScale % hParams.lengthScale);
 
         if(covFunction == rbf)
         {
             k = hParams.signalVariance * hParams.signalVariance *
-                exp(- 0.5 * arma::dot((x_p - x_q), M * (x_p - x_q)));
+                exp(- 0.5 * arma::dot((x_p - x_q).t(), M * (x_p - x_q)));
             if(sameIndex)
                 k += hParams.noiseVariance * hParams.noiseVariance;
         }

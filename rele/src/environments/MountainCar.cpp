@@ -34,62 +34,48 @@ MountainCar::MountainCar(ConfigurationsLabel label) :
     DenseMDP(2, 3, 1, false, true),
     //Klein's articles
     //DenseMDP(2, 3, 1, false, true, 0.9, 100),
-    s0type(label)
+    envType(label)
 {
 }
 
 void MountainCar::step(const FiniteAction& action,
                        DenseState& nextState, Reward& reward)
 {
-    if (currentState[position] > 0.5)
-    {
-        reward[0] = 1;
-        currentState.setAbsorbing();
-    }
-    else
-    {
-        reward[0] = 0;
-    }
-
     int motorAction = action.getActionN() - 1;
 
-    double computedVelocity = currentState[velocity] + motorAction * 0.001
-                              - 0.0025 * cos(3 * currentState[position]);
-    double computedPosition = currentState[position] + computedVelocity;
+    double updatedVelocity = currentState[velocity] + motorAction * 0.001
+                             - 0.0025 * cos(3 * currentState[position]);
+    double updatedPosition = currentState[position] + updatedVelocity;
 
-    currentState[velocity] = min(max(computedVelocity, -0.07), 0.07);
 
-    if (computedPosition < -1.2 || computedPosition > 0.6)
+    if(updatedPosition <= -1.2)
     {
+        currentState[position] = -1.2;
         currentState[velocity] = 0;
     }
-    currentState[position] = min(max(computedPosition, -1.2), 0.6);
-
-    //Sutton's article
-    if (currentState[position] <= -1.2)
+    else if(updatedPosition > 0.5)
     {
+        currentState[position] = 0.6;
         currentState[velocity] = 0;
-    }
-    if (currentState[position] >= 0.6)
-    {
-        reward[0] = 0;
         currentState.setAbsorbing();
     }
     else
     {
-        reward[0] = -1;
+        currentState[position] = updatedPosition;
+        currentState[velocity] = min(max(updatedVelocity, -0.07), 0.07);
     }
 
+    //Sutton's article
+    if(envType == Sutton)
+        reward[0] = -1;
     //Klein's article
-//    if (currentState[position] > 0.5)
-//    {
-//        reward[0] = 1;
-//        currentState.setAbsorbing();
-//    }
-//    else
-//    {
-//        reward[0] = 0;
-//    }
+    else if(envType == Klein)
+    {
+        if(currentState[position] > 0.5)
+            reward[0] = 1;
+        else
+            reward[0] = 0;
+    }
 
     nextState = currentState;
 }
@@ -97,18 +83,18 @@ void MountainCar::step(const FiniteAction& action,
 void MountainCar::getInitialState(DenseState& state)
 {
     //Sutton's article
-    if (s0type == Sutton)
+    if (envType == Sutton)
     {
         currentState[position] = -0.5;
         currentState[velocity] =  0.0;
     }
-    else if (s0type == Klein)
+    else if(envType == Klein)
     {
         //Klein's article
         currentState[position] = RandomGenerator::sampleUniform(-1.2, -0.9);
         currentState[velocity] = RandomGenerator::sampleUniform(-0.07, 0.0);
     }
-    else if (s0type == Random)
+    else if(envType == Random)
     {
         currentState[position] = RandomGenerator::sampleUniform(-1.2,  0.5);
         currentState[velocity] = RandomGenerator::sampleUniform(-0.07, 0.07);
