@@ -11,7 +11,7 @@ namespace ReLe
 class WQ_Learning_WP:public WQ_Learning
 {
 public:
-	WQ_Learning_WP();
+	WQ_Learning_WP(LearningRate& alpha);
 
 	virtual void step(const Reward& reward, const FiniteState& nextState,
 	                      FiniteAction& action) override;
