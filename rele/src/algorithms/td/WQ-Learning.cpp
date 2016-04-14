@@ -55,7 +55,6 @@ void WQ_Learning::step(const Reward& reward, const FiniteState& nextState,
 
     unsigned int nTrapz = 100;
 
-    arma::vec integrals(task.finiteActionDim, arma::fill::zeros);
     for(unsigned int i = 0; i < integrals.n_elem; i++)
     {
         arma::vec means = Q.row(xn).t();
@@ -120,6 +119,8 @@ WQ_Learning::~WQ_Learning()
 void WQ_Learning::init()
 {
     FiniteTD::init();
+    integrals=arma::vec(task.finiteActionDim, arma::fill::zeros);
+
 
     idxs = arma::mat(task.finiteActionDim, task.finiteActionDim - 1, arma::fill::zeros);
     arma::vec actions = arma::linspace(0, idxs.n_cols, idxs.n_rows);

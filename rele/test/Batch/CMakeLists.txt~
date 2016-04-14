@@ -12,6 +12,9 @@ target_link_libraries(portfolio_off rele)
 add_executable(gridFQI2 GridFQITest2.cpp)
 target_link_libraries(gridFQI2 rele)
 
+add_executable(forex ForexTest.cpp)
+target_link_libraries(forex rele)
+
 add_executable(gridFQI GridFQITest.cpp)
 target_link_libraries(gridFQI rele)
 

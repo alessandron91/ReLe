@@ -164,7 +164,6 @@ public:
 
     }
 
-private:
     double initialAlpha;
     double minAlpha;
     double omega;

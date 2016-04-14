@@ -69,6 +69,8 @@ void GQ_Learning::init()
     sampleStdQ = Q + stdInfValue;
     Q2 = Q;
     weights=Q;
+    weightsVar = Q;
+
     nUpdates = Q;
 }
 
@@ -105,10 +107,11 @@ void GQ_Learning::computeWeights(size_t xn)
 		double sigma=sampleStdQ(xn,u);
 		for(int s=0;s<nSamples;s++)
 		{
+			/*
 			if(sigma>1000)
 			{
 				sigma=100;
-			}
+			}*/
 
 			qSamples(s,u)=RandomGenerator::sampleNormal(mean,sigma);
 		}
@@ -117,7 +120,7 @@ void GQ_Learning::computeWeights(size_t xn)
 
 	for(int s=0;s<nSamples;s++)
 	{
-		double qmax=qSamples.max();
+		double qmax=qSamples.row(s).max();
 		arma::vec samples=qSamples.row(s).t();
 		arma::uvec maxIndex = find(samples == qmax);
 		unsigned int index = RandomGenerator::sampleUniformInt(0,

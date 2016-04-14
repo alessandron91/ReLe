@@ -1,147 +1,274 @@
-/*
- * rele,
- *
- *
- * Copyright (C) 2015 Davide Tateo & Matteo Pirotta
- * Versione 1.0
- *
- * This file is part of rele.
- *
- * rele is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * rele is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with rele.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 #include "rele/environments/Forex.h"
+#include <armadillo>
+#define PRICE 7
+#define N_INDICATORS 7
+#define ACTION 7
+#define SPREAD 0.0002
+#define N_STATES 1944
+#include <iostream>
+#include <ostream>
 
+using namespace std;
 
 namespace ReLe
 {
 
-Forex::Forex(const arma::mat& rawDataset, arma::uvec whichIndicators, unsigned int priceCol) :
-    dataset(arma::mat(rawDataset.n_rows - 1, whichIndicators.n_elem + 1, arma::fill::zeros)),
-    indicatorsDim(arma::vec(dataset.n_cols, arma::fill::zeros)),
-    profit(0),
-    spread(0.0002),
-    currentStateIdx(0),
-    currentState(arma::vec(dataset.n_cols, arma::fill::zeros)),
-    currentPrice(dataset(0, dataset.n_cols - 1)),
-    prevAction(0),
-    prevPrice(0)
-{
-    arma::uvec price = {priceCol};
-    whichIndicators = arma::join_vert(whichIndicators, price);
-    indicatorsDim = rawDataset.submat(arma::uvec(1, arma::fill::zeros), whichIndicators).t();
 
-    nStates = arma::prod(indicatorsDim);
+	Forex::Forex(const arma::mat& dataset)
+	{
+		this->dataset=dataset;
+		currentPrice=this->dataset(0,PRICE);/// VERIFICAREEEEEEEEEE
 
-    arma::mat tempRawDataset = rawDataset.rows(arma::span(1, rawDataset.n_rows - 1));
-    dataset = tempRawDataset.cols(whichIndicators);
+		currentPrice=this->dataset(0,PRICE);/// VERIFICAREEEEEEEEEE
+		prevAction=0;
 
-    EnvironmentSettings& task = this->getWritableSettings();
-    task.isFiniteHorizon = true;
-    //task.horizon = horizon;
-    task.gamma = 1;
-    //task.isAverageReward = false;
-    task.isEpisodic = true;
-    task.finiteStateDim = nStates;
-    task.finiteActionDim = 3;
-    task.continuosStateDim = 0;
-    task.rewardDim = 1;
-}
+		 profit=0;
+		 stateIndexer=arma::mat(N_STATES,N_INDICATORS+1,arma::fill::zeros);
+		 indicatorSignal=arma::vec(N_INDICATORS);
+		 currentState=arma::vec(N_INDICATORS+1);
+		 setSettings(N_STATES,3);
+		 t=0;
+		 rewards=arma::rowvec(dataset.n_rows);
+		 actions=arma::rowvec(dataset.n_rows);
+		 states=arma::rowvec(dataset.n_rows);
 
-void Forex::getInitialState(FiniteState& state)
-{
-    state = getNextState(0);
-}
+		 InitStatesIndexer();
 
-void Forex::step(const FiniteAction& action, FiniteState& nextState,
-                 Reward& reward)
-{
-    double cost = 0;
-    unsigned int currentAction = action.getActionN();
+	}
 
-    double diff = currentPrice - prevPrice;
+	Forex::~Forex(){}
 
-    if(prevAction != currentAction && currentAction != 0)
-        cost = spread;
+	void Forex::step (const FiniteAction& action, FiniteState& nextState,
+            Reward& reward)
+	{
 
-    if(prevAction == 0)
-        reward[0] = -cost;
-    else if(prevAction == 1)
-        reward[0] = diff - cost;
-    else if(prevAction == 2)
-        reward[0] = -diff - cost;
 
-    nextState = getNextState(currentAction);
+		///// INSERIRE LIMITE LUNGHEZZA DATASET
+		double c=0;
+		int act=action.getActionN();
 
-    profit += reward[0];
-}
 
-unsigned int Forex::getNextState(unsigned int action)
-{
-    currentState(arma::span(0, currentState.n_elem - 2)) =
-        dataset(currentStateIdx, arma::span(0, dataset.n_cols - 2)).t();
-    currentState(currentState.n_elem - 1) = action;
 
-    prevPrice = currentPrice;
-    prevAction = action;
 
-    currentPrice = dataset(currentStateIdx, dataset.n_cols - 1);
+		double diff=currentPrice-prevPrice;
 
-    currentStateIdx++;
 
-    return getStateN();
-}
 
-unsigned int Forex::getStateN()
-{
-    unsigned int stateN = 0;
+		if(act!=0 && prevAction!=act)
+		{
+			c=SPREAD;
+		}
 
-    unsigned int i = 0;
-    for(i = 0; i < indicatorsDim.n_elem - 1; i++)
-    {
-        unsigned int fact = (indicatorsDim(i) == 2 ? (currentState(i) == 1 ? 0 : 1) : currentState(i));
-        stateN += fact * arma::prod(indicatorsDim(arma::span(i + 1, indicatorsDim.n_elem - 1)));
-    }
 
-    unsigned int fact = (indicatorsDim(i) == 2 ? (currentState(i) == 1 ? 0 : 1) : currentState(i));
-    stateN += fact;
+		if(prevAction==0)
+		{
+			reward[0]=0-c;
+		}
 
-    return stateN;
-}
+		if(prevAction==1)
+		{
+			reward[0]=diff-c;
+		}
 
-double Forex::getProfit() const
-{
-    return profit;
-}
+		if(prevAction==2)
+		{
+			reward[0]=-diff-c;
+		}
+		nextState=getNextState(act);
+		profit=profit+reward[0];
+		//cout<<"Reward:::"<<reward<<endl;
+		//cout<<"PROFIT::::"<<profit<<endl
+		if(t<=dataset.n_rows-1)
+			rewards(t)=(double)reward[0];
 
-void Forex::setCurrentStateIdx(unsigned int currentStateIdx)
-{
-    this->currentStateIdx = currentStateIdx;
-}
+		if(t==dataset.n_rows)  /// DA CANCELLARE
+			{//profit=0;
+			t=0;
+			}
 
-unsigned int Forex::getNStates() const
-{
-    return nStates;
-}
+		if(testMode==true)
+		{
+			actions(t)=action.getActionN();
+			states(t)=nextState.getStateN();
+		}
 
-const arma::mat& Forex::getDataset() const
-{
-    return dataset;
-}
 
-Forex::~Forex()
-{
-}
+
+
+
+	}
+
+	void Forex::getInitialState(FiniteState& state)
+	{
+		state=getNextState(0);// in Nextstate t++
+
+	}
+
+
+
+	int Forex::getNextState(int action)
+	{
+
+		for(int i=0;i<N_INDICATORS;i++)
+		{
+			indicatorSignal(i)=dataset(t,i);
+			currentState(i)=indicatorSignal(i);
+		}
+
+		currentState(N_INDICATORS)=action;
+		prevPrice=currentPrice;
+		currentPrice=dataset(t,PRICE);
+		prevAction=action;
+
+		t++;
+
+
+		int index= getRowMatrixIndex(currentState,stateIndexer);
+
+		/*currentState.print();
+		cout<<index<<endl;*/
+		return index;
+
+
+	}
+
+
+	int nextIndex(arma::vec a,int j)
+	{
+
+		if(j!=a.n_elem-1)
+		{
+		return j+1;
+		}
+		else
+		{
+		return 0;
+		}
+
+
+	}
+
+	void Forex::writeVecElemAwithTperiodInVecStateIndexer(arma::vec a,int col,int t)
+	{
+		int j=0;
+		int el=a(j);
+
+		for(int i=0;i<stateIndexer.n_rows;i++)
+		{
+
+			stateIndexer(i,col)=(int)el;
+
+			if(i%t==0 && i!=0)
+			{
+
+				j=nextIndex(a,j);
+
+				el=a(j);
+			}
+
+
+
+
+
+		}
+
+
+	}
+
+	void Forex::InitStatesIndexer()
+	{
+		arma::vec macd={1,2};
+		arma::vec mom={1,2};
+		arma::vec maco={1,2};
+		arma::vec rsi={0,1,2};
+		arma::vec cci={0,1,2};
+		arma::vec pcb={0,1,2};
+		arma::vec stoc={0,1,2};
+		arma::vec actions={0,1,2};
+
+		macd.print();
+		mom.print();
+
+
+
+		int nrows=N_STATES;
+
+
+		int t=nrows/macd.n_elem;
+		writeVecElemAwithTperiodInVecStateIndexer(macd,0,t);
+		t=t/mom.n_elem;
+		//stateIndexer.print();
+
+		writeVecElemAwithTperiodInVecStateIndexer(mom,1,t);
+		//stateIndexer.print();
+		t=t/maco.n_elem;
+		writeVecElemAwithTperiodInVecStateIndexer(maco,2,t);
+		t=t/rsi.n_elem;
+		writeVecElemAwithTperiodInVecStateIndexer(rsi,3,t);
+		t=t/cci.n_elem;
+		writeVecElemAwithTperiodInVecStateIndexer(cci,4,t);
+		t=t/pcb.n_elem;
+
+		writeVecElemAwithTperiodInVecStateIndexer(pcb,5,t);
+		t=t/stoc.n_elem;
+		writeVecElemAwithTperiodInVecStateIndexer(stoc,6,t);
+		t=t/actions.n_elem;
+
+		writeVecElemAwithTperiodInVecStateIndexer(actions,7,t);
+
+		ofstream stati("Scrivania/stati.txt");
+		stati<<stateIndexer<<endl;
+
+
+
+
+
+
+
+
+	}
+
+
+
+	bool equal(arma::vec a,arma::rowvec b)
+	{
+		for(int i=0;i<a.n_elem;i++)
+		{
+			if(a(i)!=b(i))
+			{
+				return false;
+			}
+		}
+		return true;
+
+
+	}
+
+
+	int Forex::getRowMatrixIndex(arma::vec v,arma::mat b)
+	{
+		for(int i=0;i<b.n_rows;i++)
+		{
+			if(equal(v,b.row(i)))
+				return i;
+		}
+		return -1;
+
+	}
+
+
+	void Forex::setSettings(int stateDim,int actionDim)
+	{
+		   EnvironmentSettings& task = this->getWritableSettings();
+		        task.isFiniteHorizon = true;
+		        //task.horizon = horizon;
+		        task.gamma = 0.8;
+		        //task.isAverageReward = false;
+		        task.isEpisodic = true;
+		        task.finiteStateDim = stateDim;
+		        task.finiteActionDim=actionDim;
+		        task.continuosStateDim = 0;
+		        task.rewardDim = 1;
+	}
 
 }

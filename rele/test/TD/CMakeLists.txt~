@@ -13,6 +13,3 @@ target_link_libraries(grid_world2 rele)
 
 add_executable(mountain_car MountainCarTest.cpp)
 target_link_libraries(mountain_car rele)
-
-add_executable(forex ForexTest.cpp)
-target_link_libraries(forex rele)

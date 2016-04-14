@@ -1,66 +1,94 @@
-/*
- * rele,
- *
- *
- * Copyright (C) 2015 Davide Tateo & Matteo Pirotta
- * Versione 1.0
- *
- * This file is part of rele.
- *
- * rele is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * rele is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with rele.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-#ifndef INCLUDE_RELE_ENVIRONMENTS_FOREX_H_
-#define INCLUDE_RELE_ENVIRONMENTS_FOREX_H_
+#ifndef FOREX_H_
+#define FOREX_H_
 
 #include "rele/core/Basics.h"
 #include "rele/core/Environment.h"
-
+#include <armadillo>
+#include <set>
+#include <ostream>
 namespace ReLe
 {
 
 class Forex: public Environment<FiniteAction, FiniteState>
 {
 public:
-    Forex(const arma::mat& rawDataset, arma::uvec whichIndicators, unsigned int actionCol);
-    virtual void step(const FiniteAction& action, FiniteState& nextState,
-                      Reward& reward) override;
-    virtual void getInitialState(FiniteState& state) override;
-    double getProfit() const;
-    void setCurrentStateIdx(unsigned int currentStateIdx);
-    unsigned int getNStates() const;
-    const arma::mat& getDataset() const;
+	Forex(const arma::mat& dataset);
+	virtual void step(const FiniteAction& action, FiniteState& nextState,
+					  Reward& reward) override;
+	virtual void getInitialState(FiniteState& state) override;
 
-    virtual ~Forex();
+	//virtual void initStateIndexer();
+	//virtual void initIndicatorsIndexer();
+	virtual int getNextState(int action);
+	virtual void setSettings(int stateDim,int actionDim);
 
-protected:
-    unsigned int getNextState(unsigned int action);
-    unsigned int getStateN();
+	virtual void InitStatesIndexer();
+	virtual int getRowMatrixIndex(arma::vec v,arma::mat b);
+	//virtual int getStateIndex(arma::rowvec v);
 
-protected:
-    arma::mat dataset;
-    arma::vec indicatorsDim;
-    double profit;
-    double spread;
-    unsigned int nStates;
-    unsigned int currentStateIdx;
-    arma::vec currentState;
-    double currentPrice;
-    unsigned int prevAction;
-    double prevPrice;
+	virtual void writeVecElemAwithTperiodInVecStateIndexer(arma::vec a,int col,int t);
+	virtual ~Forex();
+
+	const arma::mat& getStateIndexer() const {
+		return stateIndexer;
+	}
+
+	double getProfit() const {
+		return profit;
+	}
+
+	unsigned int getT() const {
+		return t;
+	}
+
+	void setT(int t) {
+		this->t = t;
+	}
+
+	void setProfit(double profit) {
+		this->profit = profit;
+	}
+
+	const arma::rowvec& getRewards() const {
+		return rewards;
+	}
+
+	bool isTestMode() const {
+		return testMode;
+	}
+
+	void setTestMode(bool testMode) {
+		this->testMode = testMode;
+	}
+
+	const arma::rowvec& getActions() const {
+		return actions;
+	}
+
+	const arma::rowvec& getStates() const {
+		return states;
+	}
+
+private:
+	arma::mat dataset;
+	int t;
+	arma::vec indicatorSignal;
+	arma::vec currentState;
+	double currentPrice;
+	double prevPrice;
+	int prevAction;
+	double profit;
+	arma::mat indicatorsIndexer;
+	arma::mat stateIndexer;
+	arma::rowvec rewards;
+
+	arma::rowvec states;
+	arma::rowvec actions;
+	bool testMode;
+
+
 };
 
 }
 
-#endif /* INCLUDE_RELE_ENVIRONMENTS_FOREX_H_ */
+#endif
