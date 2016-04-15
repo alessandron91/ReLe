@@ -330,10 +330,10 @@ const arma::mat& Forex::getDataset() const
 		        task.gamma = 0.8;
 		        //task.isAverageReward = false;
 		        task.isEpisodic = true;
-		        task.finiteStateDim = stateDim;
-		        task.finiteActionDim=actionDim;
-		        task.continuosStateDim = 0;
-		        task.rewardDim = 1;
+		        task.statesNumber = stateDim;
+		        task.actionsNumber=actionDim;
+		        task.stateDimensionality = 1;
+		        task.rewardDimensionality = 1;
 	}
 
 }

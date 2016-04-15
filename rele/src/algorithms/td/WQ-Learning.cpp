@@ -118,6 +118,7 @@ WQ_Learning::~WQ_Learning()
 void WQ_Learning::init()
 {
     FiniteTD::init();
+    integrals=arma::vec(task.finiteActionDim, arma::fill::zeros);
 
     idxs = arma::mat(task.actionsNumber, task.actionsNumber - 1, arma::fill::zeros);
     arma::vec actions = arma::linspace(0, idxs.n_cols, idxs.n_rows);
