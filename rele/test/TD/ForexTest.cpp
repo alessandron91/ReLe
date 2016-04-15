@@ -13,6 +13,7 @@
 #include "rele/algorithms/step_rules/StateActionLearningRate.h"
 #include <armadillo>
 #include <iostream>
+#include <time.h>
 //#include "rele/policy/q_policy/WPolicy.h"
 #include <string>     // std::string, std::to_string
 #define N_STATES 1944
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
 {
 
 
+	clock_t time;
     bool acquireData = true;
 
     FileManager fm("Forex", "FQI");
@@ -36,9 +38,9 @@ int main(int argc, char *argv[])
   if (acquireData)
   {
 
-	  int nSamples=100;
-	  int nEpisodes=30;
-	  std::string alg="GQ1000";
+	  int nSamples=1;
+	  int nEpisodes=20;
+	  std::string alg="provagq1000";
 
 	  arma::mat profits=arma::mat(nEpisodes,nSamples);
 	  arma::mat profitTest=arma::mat(nEpisodes,nSamples);
@@ -56,6 +58,7 @@ int main(int argc, char *argv[])
  	  arma::mat actionsMatrix=arma::mat(nSamples,testset.n_rows);
  	  arma::mat statesMatrix=arma::mat(nSamples,testset.n_rows);
 
+ 	  time=clock();
 	  for(int sample=0;sample<nSamples;sample++)
 	  {
 
@@ -68,7 +71,7 @@ int main(int argc, char *argv[])
        // ForexIndPolicy policy(dataset);
 
        StateActionLearningRate lrate=StateActionLearningRate(1,1,0.0,N_STATES,3);
-       GQ_Learning agent(policy,lrate,1000);
+       GQ_Learning agent(policy,lrate,20);
        //WQ_Learning agent(policy,lrate);
 
 
@@ -175,4 +178,7 @@ int main(int argc, char *argv[])
 	 	actionsMatrixFile<<actionsMatrix<<endl;
 	 	statesMatrixFile<<statesMatrix<<endl;
   }
+
+  cout<<"executionTimeGQ1000"<<endl;
+  cout<<endl<<(clock()-time) /(double)CLOCKS_PER_SEC<<endl;
 }
