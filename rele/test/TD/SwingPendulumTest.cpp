@@ -36,7 +36,7 @@ using namespace ReLe;
 
 int main(int argc, char *argv[])
 {
-    unsigned int episodes = 10000;
+    unsigned int episodes = 300;
     DiscreteActionSwingUp mdp;
 
     BasisFunctions bVector = PolynomialFunction::generate(7, mdp.getSettings().statesNumber + 1);
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     DenseFeatures phi(basis);
 
     e_GreedyApproximate policy;
-    policy.setEpsilon(0.05);
+    policy.setEpsilon(0.3);
     ConstantLearningRateDense alpha(0.1);
     LinearGradientSARSA agent(phi, policy, alpha);
     agent.setLambda(0.8);
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
     fm.createDir();
     fm.cleanDir();
     auto&& core = buildCore(mdp, agent);
-    core.getSettings().loggerStrategy = new WriteStrategy<FiniteAction, DenseState>(fm.addPath("mc.txt"));
+    core.getSettings().loggerStrategy = new WriteStrategy<FiniteAction, DenseState>(fm.addPath("mc.log"));
 
     for (int i = 0; i < episodes; i++)
     {
