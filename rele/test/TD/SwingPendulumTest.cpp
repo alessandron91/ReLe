@@ -36,7 +36,7 @@ using namespace ReLe;
 
 int main(int argc, char *argv[])
 {
-    unsigned int episodes = 300;
+    unsigned int episodes = 500;
     DiscreteActionSwingUp mdp;
 
     BasisFunctions bVector = PolynomialFunction::generate(7, mdp.getSettings().statesNumber + 1);
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     DenseFeatures phi(basis);
 
     e_GreedyApproximate policy;
-    policy.setEpsilon(0.3);
+    policy.setEpsilon(0.05);
     ConstantLearningRateDense alpha(0.1);
     LinearGradientSARSA agent(phi, policy, alpha);
     agent.setLambda(0.8);

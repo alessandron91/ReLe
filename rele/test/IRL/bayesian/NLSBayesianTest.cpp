@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
     std::cout << "Mean gt: " << expertDist.getParameters().t() << std::endl;
     std::cout << "Sigma gt: " << std::endl
-    			<< Sigma;
+              << Sigma;
 
     PolicyEvalDistribution<DenseAction, DenseState> expert(expertDist, expertPolicy);
 
@@ -101,6 +101,9 @@ int main(int argc, char *argv[])
     arma::mat Psi = arma::eye(2, 2);
     unsigned int nu = 2;
     InverseWishart covPrior(nu, Psi);
+
+    std::cout << "initial covariance mode" << std::endl;
+    std::cout << covPrior.getMode() << std::endl;
 
 
     BayesianCoordinateAscendMean<DenseAction, DenseState> alg(policyFamily, meanPrior, Sigma);
