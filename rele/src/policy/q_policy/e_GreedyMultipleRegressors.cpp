@@ -11,30 +11,16 @@ using namespace std;
 
 namespace ReLe
 {
-	e_GreedyMultipleRegressors::e_GreedyMultipleRegressors(unsigned int nactions,std::vector<BatchRegressor&> regressors)
-	{
-		this->nactions=nactions;
-		for(int i=0;i<nactions;i++)
-		{
-			regressorsVector[i]=regressors[i];
-		}
 
+e_GreedyMultipleRegressors::e_GreedyMultipleRegressors(std::vector<BatchRegressor*>& regressors) :
+		regressors(regressors),
+		eps(eps)
+{
+}
 
-
-		eps=0.0;
-	}
-
-	e_GreedyMultipleRegressors::~e_GreedyMultipleRegressors()
-	{
-
-	}
-
-/*void e_GreedyMultipleRegressors::setRegressor(unsigned int regressorIndex,BatchRegressor regressor)
-	{
-		this->regressorsVector[regressorIndex]=regressor;
-
-	}*/
-
+e_GreedyMultipleRegressors::~e_GreedyMultipleRegressors()
+{
+}
 
 unsigned int e_GreedyMultipleRegressors::operator()(const arma::vec& state)
 {
@@ -49,13 +35,15 @@ unsigned int e_GreedyMultipleRegressors::operator()(const arma::vec& state)
         vec regInput(nstates);
         regInput= state;
         un=0;
-        vec&& qvalue0 = regressorsVector[un](regInput);
+        auto& self = *regressors[un];
+        vec&& qvalue0 = self(regInput);
         double qmax=qvalue0[0];
         std::vector<int> optimal_actions;
         optimal_actions.push_back(un);
-        for (unsigned int i = 1; i < regressorsVector.size(); ++i)
+        for (unsigned int i = 1; i < nactions; ++i)
         {
-            vec&& qvalue = regressorsVector[i](regInput);
+        	auto& self = *regressors[i];
+            vec&& qvalue = self(regInput);
             if (qmax < qvalue[0])
             {
                 optimal_actions.clear();
@@ -84,9 +72,12 @@ double e_GreedyMultipleRegressors::operator()(const arma::vec& state, const unsi
     return 0.0;
 }
 
-
-
-
+hyperparameters_map e_GreedyMultipleRegressors::getPolicyHyperparameters()
+{
+    hyperparameters_map hyperParameters;
+    hyperParameters["eps"] = eps;
+    return hyperParameters;
+}
 
 
 

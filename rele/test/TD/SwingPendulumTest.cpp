@@ -30,24 +30,37 @@
 #include "rele/approximators/basis/ConditionBasedFunction.h"
 #include "rele/policy/q_policy/e_Greedy.h"
 #include "rele/utils/FileManager.h"
+#include <fenv.h>
 
 using namespace std;
 using namespace ReLe;
 
 int main(int argc, char *argv[])
 {
-    unsigned int episodes = 500;
+
+    feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+    unsigned int episodes = 10;
     DiscreteActionSwingUp mdp;
 
-    BasisFunctions bVector = PolynomialFunction::generate(7, mdp.getSettings().statesNumber + 1);
+    //BasisFunctions bVector = PolynomialFunction::generate(7, mdp.getSettings().statesNumber + 1);
+    BasisFunctions b1 = GaussianRbf::generate(4, {-1, 1, -1, 1});
+    BasisFunctions b2 = GaussianRbf::generate(5, {-1, 1, -1, 1});
+    BasisFunctions b3 = GaussianRbf::generate(6, {-1, 1, -1, 1});
+    std::vector<BasisFunction*> bVector;
+    bVector.reserve(b1.size() + b2.size() + b3.size());
+    bVector.insert(bVector.end(), b1.begin(), b1.end());
+    bVector.insert(bVector.end(), b2.begin(), b2.end());
+    bVector.insert(bVector.end(), b3.begin(), b3.end());
     BasisFunctions basis = AndConditionBasisFunction::generate(bVector, 2, mdp.getSettings().actionsNumber);
 
     DenseFeatures phi(basis);
 
     e_GreedyApproximate policy;
-    policy.setEpsilon(0.05);
+    policy.setEpsilon(0.6);
     ConstantLearningRateDense alpha(0.1);
     LinearGradientSARSA agent(phi, policy, alpha);
+
     agent.setLambda(0.8);
 
     FileManager fm("mc", "linearSarsa");
@@ -58,7 +71,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < episodes; i++)
     {
-        core.getSettings().episodeLength = 10000;
+        core.getSettings().episodeLength = 1000;
         cout << "Starting episode: " << i << endl;
         core.runEpisode();
     }
