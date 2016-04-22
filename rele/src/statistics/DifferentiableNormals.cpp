@@ -42,7 +42,7 @@ ParametricNormal::ParametricNormal(unsigned int support_dim)
       Cov(support_dim, support_dim, fill::eye),
       invCov(support_dim, support_dim, fill::eye),
       cholCov(support_dim, support_dim, fill::eye),
-      detValue(0)
+      logDet(0)
 {
 
 }
@@ -53,21 +53,18 @@ ParametricNormal::ParametricNormal(const vec& params, const mat& covariance)
     mean       = params;
     Cov        = covariance;
     invCov     = inv(Cov);
-    detValue   = det(Cov);
     cholCov    = chol(Cov);
+    logDet     = computeLogDet(Cov);
 }
 
 vec ParametricNormal::operator() () const
 {
-    //cerr << "Mean: " << mean;
-    //cerr << "---------" << endl;
-    //cerr << "Cov: " << Cov << endl;
     return mvnrandFast(mean, cholCov);
 }
 
-double ParametricNormal::operator() (const vec& point) const
+double ParametricNormal::logPdf(const vec& point) const
 {
-    return mvnpdfFast(point, mean, invCov, detValue);
+    return logmvnpdfFast(point, mean, invCov, logDet);
 }
 
 void ParametricNormal::wmle(const arma::vec& weights, const arma::mat& samples)
@@ -99,7 +96,7 @@ mat ParametricNormal::diff2log(const vec&point) const
 
 vec ParametricNormal::pointDifflog(const vec& point) const
 {
-    return invCov * (point - mean);
+    return -invCov * (point - mean);
 }
 
 void ParametricNormal::writeOnStream(ostream& out)
@@ -141,11 +138,21 @@ void ParametricNormal::readFromStream(istream& in)
         }
     }
     invCov = inv(Cov);
-    detValue = det(Cov);
+    logDet = computeLogDet(Cov);
 }
 
 void ParametricNormal::updateInternalState()
 {
+}
+
+double ParametricNormal::computeLogDet(const arma::mat& cov)
+{
+    double detSign;
+    double detLog;
+    log_det(detLog, detSign, cov);
+    assert(detSign > 0);
+
+    return detLog;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -598,7 +605,8 @@ void ParametricLogisticNormal::updateInternalState()
         invCov(i,i) = 1.0/Cov(i,i);
         cholCov(i,i) = sqrt(Cov(i,i));
     }
-    detValue = det(Cov);
+
+    logDet = computeLogDet(Cov);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -847,7 +855,7 @@ void ParametricCholeskyNormal::updateInternalState()
     Cov = cholCov.t() * cholCov;
     //TODO [OPTIMIZATION] questo si potrebbe fare meglio
     invCov = inv(Cov);
-    detValue = det(Cov);
+    logDet = computeLogDet(Cov);
 }
 
 ///////////////////////////////////////////////////////
@@ -954,7 +962,7 @@ void ParametricFullNormal::update(const arma::vec &increment)
 void ParametricFullNormal::updateInternalState()
 {
     invCov     = inv(Cov);
-    detValue   = det(Cov);
+    logDet     = computeLogDet(Cov);
     cholCov    = chol(Cov);
 }
 

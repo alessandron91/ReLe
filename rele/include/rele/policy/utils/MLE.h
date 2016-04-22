@@ -36,7 +36,7 @@ protected:
     USING_STATISTIC_ESTIMATION_MEMBERS(ActionC, StateC)
 
 public:
-    MLE(DifferentiablePolicy<ActionC,StateC>& policy, Dataset<ActionC,StateC>& data)
+    MLE(DifferentiablePolicy<ActionC,StateC>& policy, const Dataset<ActionC,StateC>& data)
         : StatisticEstimation<ActionC, StateC>(policy, data)
     {
 
@@ -68,6 +68,7 @@ public:
 
         // compute average value
         logLikelihood /= nbEpisodes;
+        dx /= nbEpisodes;
 
         return logLikelihood;
     }
@@ -122,6 +123,8 @@ public:
 
         // compute average value
         logLikelihood /= nbEpisodes;
+        dx /= nbEpisodes;
+
         double l2normParams = arma::norm(x);
         logLikelihood -= lambda * l2normParams;
         arma::vec L2RegGradient = x / l2normParams;

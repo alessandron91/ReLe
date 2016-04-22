@@ -32,21 +32,23 @@
 #include "rele/policy/q_policy/e_Greedy.h"
 #include "rele/utils/FileManager.h"
 
+#include "rele/approximators/regressors/q_regressors/QRegressorImplementation.h"
+
 using namespace std;
 using namespace ReLe;
 
 int main(int argc, char *argv[])
 {
     unsigned int episodes = 1000;
-    MountainCar mdp;
+    MountainCar mdp(MountainCar::Ernst);
 
-    BasisFunctions bVector = PolynomialFunction::generate(7, mdp.getSettings().statesNumber + 1);
+    BasisFunctions bVector = PolynomialFunction::generate(1, mdp.getSettings().statesNumber + 1);
     BasisFunctions basis = AndConditionBasisFunction::generate(bVector, 2, mdp.getSettings().actionsNumber);
 
     DenseFeatures phi(basis);
 
     e_GreedyApproximate policy;
-    policy.setEpsilon(0.05);
+    policy.setEpsilon(1);
     ConstantLearningRateDense alpha(0.1);
     LinearGradientSARSA agent(phi, policy, alpha);
     agent.setLambda(0.8);

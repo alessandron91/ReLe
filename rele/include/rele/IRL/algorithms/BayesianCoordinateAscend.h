@@ -53,8 +53,9 @@ public:
         unsigned int n = data.size();
 
         params.zeros(dp, n);
+        params.each_col() = getInitialValue();
 
-        double eps = 1e-8;
+        double eps = 0.1;
         double posteriorP = -std::numeric_limits<double>::infinity();
         double oldPosteriorP;
 
@@ -71,6 +72,8 @@ public:
 
             //Update theta prior
             computeThetaPrior();
+
+            std::cout << "Posterior: " << posteriorP << std::endl;
 
         }
         while(posteriorP - oldPosteriorP > eps);
@@ -99,15 +102,21 @@ protected:
             epDataset.push_back(data[ep]);
             MAP<ActionC, StateC> mapCalculator(policy, thetaPrior, epDataset);
             arma::vec theta_ep = params.col(ep);
-            posteriorP += mapCalculator.compute(theta_ep);
+            double thetaP = mapCalculator.compute(theta_ep);
+            posteriorP += thetaP;
             params.col(ep) = policy.getParameters();
+
+            //std::cout << thetaP << std::endl;
         }
+
+        //std::cout << "posteriorTheta " << posteriorP << std::endl;
 
         return posteriorP;
     }
 
     virtual double computePosterior() = 0;
     virtual void computeThetaPrior() = 0;
+    virtual arma::vec getInitialValue() = 0;
 
 protected:
     arma::mat params;
@@ -154,6 +163,11 @@ public:
         return posterior;
     }
 
+    virtual arma::vec getInitialValue() override
+    {
+        return prior.getMean();
+    }
+
 private:
     const ParametricNormal& prior;
     ParametricNormal posterior;
@@ -197,7 +211,13 @@ public:
         Sigma = covPosterior.getMode();
 
         //compute posterior probability
-        return meanPosterior.logPdf(mu) + covPosterior.logPdf(arma::vectorise(Sigma));
+        double logMuP = meanPosterior.logPdf(mu);
+        double logCovP = covPosterior.logPdf(arma::vectorise(Sigma));
+
+        //std::cout << "posteriorMu " << logMuP << std::endl;
+        //std::cout << "posteriorCov " << logCovP << std::endl;
+
+        return logMuP + logCovP;
     }
 
     virtual void computeThetaPrior() override
@@ -213,6 +233,11 @@ public:
     InverseWishart getCovPosterior()
     {
         return covPosterior;
+    }
+
+    virtual arma::vec getInitialValue() override
+    {
+        return meanPrior.getMean();
     }
 
 private:
