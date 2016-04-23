@@ -3,6 +3,7 @@
 #include "rele/utils/RandomGenerator.h"
 #include <cassert>
 
+
 using namespace std;
 
 namespace ReLe
@@ -18,9 +19,9 @@ void SwingUpSettings::defaultSettings(SwingUpSettings& settings)
     //Environment Parameters
     settings.gamma = 0.999;
     settings.stateDimensionality = 2;
-    settings.actionDimensionality = -1;
+    settings.actionDimensionality =1;
     settings.rewardDimensionality = 1;
-    settings.statesNumber = -1;
+    settings.statesNumber = 0;
     settings.actionsNumber = 3;
     settings.isFiniteHorizon = false;
     settings.isAverageReward = false;
@@ -29,7 +30,7 @@ void SwingUpSettings::defaultSettings(SwingUpSettings& settings)
 
     //SwingUp parameters
     settings.stepTime = 0.01;
-    double uMax = 2.0/*Doya's paper 5.0*/;
+    double uMax = 5.0/*Doya's paper 5.0*/;
     double maxVelocity = M_PI_4 / settings.stepTime;
     settings.actionRange = Range(-uMax, uMax);
     settings.thetaRange = Range(-M_PI, M_PI);
@@ -132,6 +133,9 @@ void DiscreteActionSwingUp::step(const FiniteAction& action,
 {
     const SwingUpSettings& swconfig = *config;
 
+
+
+
     //get current state
     double theta = currentState[0];
     double velocity = currentState[1];
@@ -151,6 +155,8 @@ void DiscreteActionSwingUp::step(const FiniteAction& action,
 
     double signAngleDifference = std::atan2(std::sin(theta - previousTheta),
                                             std::cos(theta - previousTheta));
+    cout<<"signAngleDiffrence"<<endl;
+    cout<<signAngleDifference<<endl;
     cumulatedRotation += signAngleDifference;
     if (!overRotated && std::abs(cumulatedRotation) > 5.0f * M_PI)
         overRotated = true;
@@ -170,12 +176,19 @@ void DiscreteActionSwingUp::step(const FiniteAction& action,
     currentState.setAbsorbing(endepisode);
     nextState = currentState;
 
+
     //###################### REWARD ######################
     if (swconfig.useOverRotated)
         // Reinforcement Learning in Continuous Time and Space (Kenji Doya)
         reward[0] = (!overRotated) ? cos(nextState[0]) : -1.0;
     else
         reward[0] = cos(nextState[0]);
+
+
+    nextState[0]=nextState[0]/M_PI;
+    nextState[1]=nextState[1]/swconfig.velocityRange.hi();
+
+
 
 }
 
