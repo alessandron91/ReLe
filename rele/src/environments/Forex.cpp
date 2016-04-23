@@ -36,20 +36,7 @@ using namespace std;
 namespace ReLe
 {
 
-Forex::Forex(const arma::mat& rawDataset, arma::uvec whichIndicators, unsigned int priceCol) :
-    dataset(arma::mat(rawDataset.n_rows - 1, whichIndicators.n_elem + 1, arma::fill::zeros)),
-    indicatorsDim(arma::vec(dataset.n_cols, arma::fill::zeros)),
-    profit(0),
-    spread(0.0002),
-    currentStateIdx(0),
-    currentState(arma::vec(dataset.n_cols, arma::fill::zeros)),
-    currentPrice(dataset(0, dataset.n_cols - 1)),
-    prevAction(0),
-    prevPrice(0)
-{
-    arma::uvec price = {priceCol};
-    whichIndicators = arma::join_vert(whichIndicators, price);
-    indicatorsDim = rawDataset.submat(arma::uvec(1, arma::fill::zeros), whichIndicators).t();
+
 
 	Forex::Forex(const arma::mat& dataset)
 	{
@@ -79,47 +66,21 @@ Forex::Forex(const arma::mat& rawDataset, arma::uvec whichIndicators, unsigned i
             Reward& reward)
 	{
 
-    if(prevAction == 0)
-        reward[0] = -cost;
-    else if(prevAction == 1)
-        reward[0] = diff - cost;
-    else if(prevAction == 2)
-        reward[0] = -diff - cost;
-
-		///// INSERIRE LIMITE LUNGHEZZA DATASET
+  		///// INSERIRE LIMITE LUNGHEZZA DATASET
 		double c=0;
 		int act=action.getActionN();
 
-    profit += reward[0];
-}
 
-unsigned int Forex::getNextState(unsigned int action)
-{
-    currentState(arma::span(0, currentState.n_elem - 2)) =
-        dataset(currentStateIdx, arma::span(0, dataset.n_cols - 2)).t();
-    currentState(currentState.n_elem - 1) = action;
 
-    prevPrice = currentPrice;
-    prevAction = action;
 
 		double diff=currentPrice-prevPrice;
 
-    currentStateIdx++;
 
-    return getStateN();
-}
 
 		if(act!=0 && prevAction!=act)
 		{
 			c=SPREAD;
 		}
-
-    unsigned int i = 0;
-    for(i = 0; i < indicatorsDim.n_elem - 1; i++)
-    {
-        unsigned int fact = (indicatorsDim(i) == 2 ? (currentState(i) == 1 ? 0 : 1) : currentState(i));
-        stateN += fact * arma::prod(indicatorsDim(arma::span(i + 1, indicatorsDim.n_elem - 1)));
-    }
 
 		if(prevAction==0)
 		{
@@ -153,10 +114,6 @@ unsigned int Forex::getNextState(unsigned int action)
 			states(t)=nextState.getStateN();
 		}
 
-const arma::mat& Forex::getDataset() const
-{
-    return dataset;
-}
 
 
 
