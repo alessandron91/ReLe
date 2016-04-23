@@ -30,6 +30,7 @@
 #include "rele/approximators/basis/ConditionBasedFunction.h"
 #include "rele/policy/q_policy/e_Greedy.h"
 #include "rele/utils/FileManager.h"
+#include <fenv.h>
 
 using namespace std;
 using namespace ReLe;
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
     policy.setEpsilon(0.6);
     ConstantLearningRateDense alpha(0.1);
     LinearGradientSARSA agent(phi, policy, alpha);
+
     agent.setLambda(0.8);
 
     FileManager fm("mc", "linearSarsa");
