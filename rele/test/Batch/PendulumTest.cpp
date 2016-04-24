@@ -16,71 +16,139 @@ using namespace std;
 using namespace ReLe;
 using namespace arma;
 
+int main(int argc, char *argv[]) {
+
+	std::string alg = "fqi";
+	//std::string alg = "dfqi";
 
 
-int main(int argc, char *argv[])
-{
-
-
-
-	arma::mat alphaMatrix;
-	arma::cube activeSetCube;
-	alphaMatrix.load(" ");
-	activeSetCube.load(" ");
 	std::vector<GaussianProcess> gp;
-	for(int i=0;i<alphaMatrix.n_cols;i++) //iterate on actions
+	std::vector<GaussianProcess> gpA; //vettori di n regressori per n azioni
+	std::vector<GaussianProcess>gpB;
+
+	if (alg == "fqi" || alg == "wfqi")
 	{
-		arma::vec alphaVec;
-		int infIndex=alphaMatrix.n_rows-1;
-		for(int j=0;j<alphaMatrix.n_rows;j++)
-		{
-			if (alphaMatrix(i,j)==inf)
+
+		arma::mat alphaMatrix;
+		arma::cube activeSetCube;
+		alphaMatrix.load(" ");
+		activeSetCube.load(" ");
+
+
+		for (int j = 0; j < alphaMatrix.n_cols; j++) //iterate on actions
 			{
-				infIndex=j;
+				arma::vec alphaVec;
+				int infIndex = alphaMatrix.n_rows - 1;
+				int bool foundInfIndex=false;
+				for (int i = 0; i < alphaMatrix.n_rows && foundInfIndex==false; i++) //iterate on samples
+				{
+					if (alphaMatrix(i, j) == inf)
+					{
+						infIndex = i;
+						foundInfIndex=true;
+					}
+				}
+				alphaVec = alphaMatrix.col(j).subvec(0, infIndex);
+				gp[j].setAlpha(alphaVec);
+			}
+
+		for (int z = 0; z < activeSetCube.n_slices; z++) //// iterate on actions -- Scritto separatamente per maggiore leggibilità ( per ottimizzare codice e spazio potrebbe essere inserito nel for precedente cambiando l'ordine di azione e stato
+			{
+				arma::mat activeSetMat;
+				int infIndex = activeSetCube.n_rows - 1;
+				int bool foundInfIndex=false;
+
+				for (int i = 0; i < activeSetCube.n_rows && foundInfIndex==false; i++)
+				{
+					if (activeSetCube(i, 0, z) == inf) //  indice 0 corretto?
+					{
+						infIndex = i;
+						foundInfIndex=true;
+					}
+				}
+				activeSetMat = activeSetCube.slice(z).submat(0, 0, infIndex,activeSetCube.n_cols);
+				gp[z].setFeatures(activeSetMat);
 
 			}
 		}
-		alphaVec=alphaMatrix.col(i).subvec(0,infIndex);
-		gp[i].setAlpha(alphaVec);
-	}
-
-	for(int i=0;i<activeSetCube.n_slices;i++)    //// Scritto separatamente per maggiore leggibilità ( per ottimizzare codice e spazio potrebbe essere inserito nel for precedente cambiando l'ordine di azione e stato
+	else if(alg=="dfqi")
 	{
-		arma::mat activeSetMat;
-		int infIndex=activeSetCube.n_rows-1;
-		for(int j=0;j<activeSetCube.n_rows;j++)
+		arma::cube alphaCube;
+		arma::cube activeSetCubeA;
+		arma::cube activeSetCubeB;
+		alphaCube.load(" ");
+		activeSetCubeA.load(" ");
+		activeSetCubeB.load(" ");
+
+		for(int j=0;j<alphaCube.n_cols;j++)
 		{
-			if(activeSetCube(j,0,i)==inf) //  indice 0 corretto?
+			arma::mat alphaMatA;
+			arma::mat alphaMatB;
+			arma::vec infIndexes=arma::vec(2);
+			std::vector<bool> foundIndex;
+			foundIndex[0]=false;
+			foundIndex[1]=false;
+			infIndexes(0) = alphaCube.n_rows - 1;
+			infIndexes(1) = alphaCube.n_rows - 1;
+
+			for(int i=0; i<alphaCube.n_rows ; i++)
 			{
-				infIndex=j;
+				for(int z=0;z<alphaCube.n_slices && foundIndex[z]==false;z++)
+				{
+					if(alphaCube(i,j,z)==inf)
+					{
+						foundIndex[z]=true;
+						infIndexes(z)=i;
+					}
+				}
 			}
+			alphaMatA=alphaCube.slice(0).submat(0,0,infIndexes(0),alphaCube.n_cols);
+			alphaMatB=alphaCube.slice(1).submat(0,0,infIndexes(1),alphaCube.n_cols);
+			gpA[j].setAlpha(alphaMatA.col(j));
+			gpB[j].setAlpha(alphaMatB.col(j));
+
+		///
+			arma::mat activeSetMatA;
+			arma::mat activeSetMatB;
+			int infActiveSetIndexA=activeSetCubeA.n_rows-1;
+			bool foundActiveSetInfIndexA=false
+			for(int i=0; i < activeSetCubeA.n_rows && foundActiveSetInfIndexA==false; i++)
+			{
+				if(activeSetCubeA(i,0,j)==inf )
+				{
+					infActiveSetIndexA=i;
+					foundActiveSetInfIndexA=true;
+				}
+
+			}
+
+			int infActiveSetIndexB=activeSetCubeB.n_rows-1;
+			bool foundActiveSetInfIndexB=false
+			for(int i=0; i < activeSetCubeB.n_rows && foundActiveSetInfIndexB==false; i++)
+			{
+				if(activeSetCubeB(i,0,j)==inf)
+				{
+					infActiveSetIndexB=i;
+					foundActiveSetInfIndexB=true;
+				}
+			}
+
+			activeSetMatA=activeSetCubeA.slice(0).submat(0,0,infActiveSetIndexA,infActiveSetIndexA);
+			activeSetMatB=activeSetCubeB.slice(0).submat(0,0,infActiveSetIndexB,infActiveSetIndexB);
+			gpA[j].setFeatures(activeSetMatA);
+			gpB[j].setFeatures(activeSetMatB);
+
+			}
+
 		}
-		activeSetMat=activeSetCube.slice(i).submat(0,0,infIndex,activeSetCube.n_cols);
-		BatchData<arma::Mat,true> dataset=activeSetMat; /// togliere assegnamento se funzion
-
-		gp[i].setFeatures(dataset);
-
 
 
 
 
 	}
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
 
 }
-
 
