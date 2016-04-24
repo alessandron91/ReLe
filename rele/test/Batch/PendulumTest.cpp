@@ -11,6 +11,7 @@
 #include "rele/utils/FileManager.h"
 
 #include <iostream>
+#include <cmath>
 
 using namespace std;
 using namespace ReLe;
@@ -39,10 +40,10 @@ int main(int argc, char *argv[]) {
 			{
 				arma::vec alphaVec;
 				int infIndex = alphaMatrix.n_rows - 1;
-				int bool foundInfIndex=false;
+				bool foundInfIndex=false;
 				for (int i = 0; i < alphaMatrix.n_rows && foundInfIndex==false; i++) //iterate on samples
 				{
-					if (alphaMatrix(i, j) == inf)
+					if (alphaMatrix(i, j) == arma::datum::inf)
 					{
 						infIndex = i;
 						foundInfIndex=true;
@@ -56,11 +57,11 @@ int main(int argc, char *argv[]) {
 			{
 				arma::mat activeSetMat;
 				int infIndex = activeSetCube.n_rows - 1;
-				int bool foundInfIndex=false;
+				bool foundInfIndex=false;
 
 				for (int i = 0; i < activeSetCube.n_rows && foundInfIndex==false; i++)
 				{
-					if (activeSetCube(i, 0, z) == inf) //  indice 0 corretto?
+					if (activeSetCube(i, 0, z) == arma::datum::inf) //  indice 0 corretto?
 					{
 						infIndex = i;
 						foundInfIndex=true;
@@ -95,7 +96,7 @@ int main(int argc, char *argv[]) {
 			{
 				for(int z=0;z<alphaCube.n_slices && foundIndex[z]==false;z++)
 				{
-					if(alphaCube(i,j,z)==inf)
+					if(alphaCube(i,j,z)==arma::datum::inf)
 					{
 						foundIndex[z]=true;
 						infIndexes(z)=i;
@@ -111,10 +112,10 @@ int main(int argc, char *argv[]) {
 			arma::mat activeSetMatA;
 			arma::mat activeSetMatB;
 			int infActiveSetIndexA=activeSetCubeA.n_rows-1;
-			bool foundActiveSetInfIndexA=false
+			bool foundActiveSetInfIndexA=false;
 			for(int i=0; i < activeSetCubeA.n_rows && foundActiveSetInfIndexA==false; i++)
 			{
-				if(activeSetCubeA(i,0,j)==inf )
+				if(activeSetCubeA(i,0,j)==arma::datum::inf )
 				{
 					infActiveSetIndexA=i;
 					foundActiveSetInfIndexA=true;
@@ -123,10 +124,10 @@ int main(int argc, char *argv[]) {
 			}
 
 			int infActiveSetIndexB=activeSetCubeB.n_rows-1;
-			bool foundActiveSetInfIndexB=false
+			bool foundActiveSetInfIndexB=false;
 			for(int i=0; i < activeSetCubeB.n_rows && foundActiveSetInfIndexB==false; i++)
 			{
-				if(activeSetCubeB(i,0,j)==inf)
+				if(activeSetCubeB(i,0,j)==arma::datum::inf)
 				{
 					infActiveSetIndexB=i;
 					foundActiveSetInfIndexB=true;
@@ -145,7 +146,7 @@ int main(int argc, char *argv[]) {
 
 
 
-	}
+
 
 
 
