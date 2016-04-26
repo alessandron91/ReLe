@@ -3,6 +3,8 @@
 
 #include "rele/policy/q_policy/ActionValuePolicy.h"
 #include "rele/approximators/Regressors.h"
+#include "rele/policy/q_policy/e_GreedyGaussianRegressors.h"
+
 
 using namespace arma;
 

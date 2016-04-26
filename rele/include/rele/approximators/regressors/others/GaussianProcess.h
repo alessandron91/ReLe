@@ -116,14 +116,6 @@ public:
         return var;
     }
 
-	void setAlpha(const arma::vec& alpha) {
-		this->alpha = alpha;
-	}
-
-	void setFeatures(const BatchData_<arma::vec, denseOutput>& featureDataset) {
-		this->features = featureDataset.getFeatures();
-	}
-
 
     /*!
      * Train the Gaussian Process with a given dataset.
