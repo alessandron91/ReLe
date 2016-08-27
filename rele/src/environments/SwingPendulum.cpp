@@ -22,7 +22,7 @@ void SwingUpSettings::defaultSettings(SwingUpSettings& settings)
     settings.actionDimensionality =1;
     settings.rewardDimensionality = 1;
     settings.statesNumber = 0;
-    settings.actionsNumber = 3;
+    settings.actionsNumber = 11;
     settings.isFiniteHorizon = false;
     settings.isAverageReward = false;
     settings.isEpisodic = false;
@@ -41,11 +41,11 @@ void SwingUpSettings::defaultSettings(SwingUpSettings& settings)
     settings.requiredUpTime = 10.0;
     settings.upRange = M_PI_4 /*seconds*/;
     settings.useOverRotated = false;
-    settings.random_start = false;
+    settings.random_start = true;
 
     settings.actionList =
     {
-        settings.actionRange.lo(), 0.0,
+        settings.actionRange.lo(),-4.0 , -3.0 , -2.0 , -1.0 , 0.0 , 1.0 , 2.0 , 3.0, 4.0,
         settings.actionRange.hi()
     };
     assert(settings.actionsNumber == settings.actionList.size());
@@ -128,6 +128,23 @@ DiscreteActionSwingUp::DiscreteActionSwingUp(SwingUpSettings& config) :
     upTime = 0;
 }
 
+DiscreteActionSwingUp::DiscreteActionSwingUp(double initialPosition, bool randomStart) :
+    DenseMDP(new SwingUpSettings()),  cleanConfig(true), config(static_cast<SwingUpSettings*>(settings))
+{
+	initialTheta=initialPosition;
+	config->random_start=randomStart;
+
+	currentState.set_size(this->getSettings().stateDimensionality);
+    //variable initialization
+    previousTheta = cumulatedRotation = overRotatedTime = 0;
+    overRotated = false;
+    upTime = 0;
+
+
+}
+
+
+
 void DiscreteActionSwingUp::step(const FiniteAction& action,
                                  DenseState& nextState, Reward& reward)
 {
@@ -155,8 +172,7 @@ void DiscreteActionSwingUp::step(const FiniteAction& action,
 
     double signAngleDifference = std::atan2(std::sin(theta - previousTheta),
                                             std::cos(theta - previousTheta));
-    cout<<"signAngleDiffrence"<<endl;
-    cout<<signAngleDifference<<endl;
+
     cumulatedRotation += signAngleDifference;
     if (!overRotated && std::abs(cumulatedRotation) > 5.0f * M_PI)
         overRotated = true;
@@ -178,11 +194,17 @@ void DiscreteActionSwingUp::step(const FiniteAction& action,
 
 
     //###################### REWARD ######################
+    double noise=RandomGenerator::sampleNormal(0,0);
+
     if (swconfig.useOverRotated)
         // Reinforcement Learning in Continuous Time and Space (Kenji Doya)
-        reward[0] = (!overRotated) ? cos(nextState[0]) : -1.0;
+        reward[0] = (!overRotated) ? cos(nextState[0])+noise : -1.0;
     else
-        reward[0] = cos(nextState[0]);
+    {
+
+        reward[0] = cos(nextState[0])+noise;
+    }
+
 
 
     nextState[0]=nextState[0]/M_PI;
@@ -200,19 +222,23 @@ void DiscreteActionSwingUp::getInitialState(DenseState& state)
     if (config->random_start)
         theta = RandomGenerator::sampleUniform(config->thetaRange.lo(),
                                                config->thetaRange.hi());
+
     else
-        theta = M_PI_2;
+        theta = initialTheta;
     adjustTheta(theta);
+
     previousTheta = theta;
     cumulatedRotation = theta;
     overRotated = false;
     overRotatedTime = 0;
-
     currentState[0] = theta;
     currentState[1] = 0.0;
+
     currentState.setAbsorbing(false);
 
     state = currentState;
+
+
 }
 
 }

@@ -38,9 +38,8 @@ using namespace ReLe;
 int main(int argc, char *argv[])
 {
 
-    feenableexcept(FE_INVALID | FE_OVERFLOW);
 
-    unsigned int episodes = 10;
+    unsigned int episodes = 200;
     DiscreteActionSwingUp mdp;
 
     //BasisFunctions bVector = PolynomialFunction::generate(7, mdp.getSettings().statesNumber + 1);
@@ -57,23 +56,33 @@ int main(int argc, char *argv[])
     DenseFeatures phi(basis);
 
     e_GreedyApproximate policy;
-    policy.setEpsilon(0.6);
+    policy.setEpsilon(1.0);
     ConstantLearningRateDense alpha(0.1);
     LinearGradientSARSA agent(phi, policy, alpha);
 
     agent.setLambda(0.8);
 
-    FileManager fm("mc", "linearSarsa");
+    FileManager fm("ip", "linearSarsa");
     fm.createDir();
     fm.cleanDir();
     auto&& core = buildCore(mdp, agent);
-    core.getSettings().loggerStrategy = new WriteStrategy<FiniteAction, DenseState>(fm.addPath("mc.log"));
+
+    int nExperiments=100;
+    for(int n=0;n<nExperiments;n++)
+    {
+
+    	std::string exp=std::to_string(n);
+
+
+    core.getSettings().loggerStrategy = new WriteStrategy<FiniteAction, DenseState>(fm.addPath("ip_"+exp+".log"));
 
     for (int i = 0; i < episodes; i++)
     {
-        core.getSettings().episodeLength = 1000;
+        core.getSettings().episodeLength = 50;
         cout << "Starting episode: " << i << endl;
         core.runEpisode();
     }
+    }
+
 
 }

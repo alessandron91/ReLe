@@ -88,6 +88,8 @@ public:
      */
     DiscreteActionSwingUp(SwingUpSettings& config);
 
+    DiscreteActionSwingUp(double initialPosition,bool randomStart);
+
     virtual ~DiscreteActionSwingUp()
     {
         if (cleanConfig)
@@ -123,11 +125,13 @@ private:
 
 private:
     double previousTheta, cumulatedRotation, overRotatedTime;
+    double initialTheta=M_PI_2;
     bool overRotated;
     int upTime;
     //current state [theta, velocity]
     SwingUpSettings* config;
     bool cleanConfig;
+
 };
 
 }//end namespace

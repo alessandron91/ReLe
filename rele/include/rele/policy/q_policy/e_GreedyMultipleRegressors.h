@@ -3,7 +3,7 @@
 
 #include "rele/policy/q_policy/ActionValuePolicy.h"
 #include "rele/approximators/Regressors.h"
-#include "rele/policy/q_policy/e_GreedyGaussianRegressors.h"
+#include "rele/approximators/regressors/others/GaussianProcess.h"
 
 
 using namespace arma;
@@ -11,48 +11,46 @@ using namespace arma;
 using namespace std;
 namespace ReLe
 {
-	class e_GreedyMultipleRegressors: public ActionValuePolicy<DenseState>
-	{
+class e_GreedyMultipleRegressors: public ActionValuePolicy<DenseState>
+{
+public:
+    e_GreedyMultipleRegressors(std::vector<std::vector<GaussianProcess*>>& regressors);
+    virtual ~e_GreedyMultipleRegressors();
 
-	public:
-			e_GreedyMultipleRegressors(std::vector<BatchRegressor*>& regressors);
-			virtual ~e_GreedyMultipleRegressors();
+    virtual unsigned int operator()(const arma::vec& state) override;
+    virtual double operator()(const arma::vec& state, const unsigned int& action) override;
 
-			virtual unsigned int operator()(const arma::vec& state) override;
-			virtual double operator()(const arma::vec& state, const unsigned int& action) override;
+    virtual hyperparameters_map getPolicyHyperparameters() override;
 
-			virtual hyperparameters_map getPolicyHyperparameters() override;
+    inline void setEpsilon(double eps)
+    {
+        this->eps = eps;
+    }
 
-			inline void setEpsilon(double eps)
-			{
-				this->eps = eps;
-			}
+    inline virtual std::string getPolicyName() override
+    {
+        return "MultipleRegressors e-Greedy";
+    }
 
-			inline virtual std::string getPolicyName() override
-			{
-				return "MultipleRegressors e-Greedy";
-			}
+    inline void setRegressor(std::vector<std::vector<GaussianProcess*>>& regressors)
+    {
+        this->regressors = regressors;
+    }
 
-			inline void setRegressor(std::vector<BatchRegressor*>& regressors)
-			{
-				this->regressors = regressors;
-			}
+    inline double getEpsilon()
+    {
+        return this->eps;
+    }
 
-			inline double getEpsilon()
-			{
-				return this->eps;
-			}
+    virtual e_GreedyMultipleRegressors* clone() override
+    {
+        return new e_GreedyMultipleRegressors(*this);
+    }
 
-			virtual e_GreedyMultipleRegressors* clone() override
-			{
-				return new e_GreedyMultipleRegressors(*this);
-			}
-
-		protected:
-			double eps;
-			std::vector<BatchRegressor*>& regressors;
-		};
-
+protected:
+    double eps;
+    std::vector<std::vector<GaussianProcess*>>& regressors;
+};
 
 
 

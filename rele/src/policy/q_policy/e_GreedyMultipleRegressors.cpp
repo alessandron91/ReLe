@@ -2,6 +2,8 @@
 #include "rele/utils/RandomGenerator.h"
 #include "rele/policy/q_policy/e_GreedyMultipleRegressors.h"
 #include "rele/approximators/Regressors.h"
+#include "rele/approximators/regressors/others/GaussianProcess.h"
+
 
 
 #include <cassert>
@@ -12,9 +14,9 @@ using namespace std;
 namespace ReLe
 {
 
-e_GreedyMultipleRegressors::e_GreedyMultipleRegressors(std::vector<BatchRegressor*>& regressors) :
-		regressors(regressors),
-		eps(eps)
+e_GreedyMultipleRegressors::e_GreedyMultipleRegressors(std::vector<std::vector<GaussianProcess*>>& regressors) :
+    regressors(regressors),
+    eps(eps)
 {
 }
 
@@ -33,25 +35,37 @@ unsigned int e_GreedyMultipleRegressors::operator()(const arma::vec& state)
     {
         unsigned int nstates = state.size();
         vec regInput(nstates);
-        regInput= state;
-        un=0;
-        auto& self = *regressors[un];
-        vec&& qvalue0 = self(regInput);
-        double qmax=qvalue0[0];
+        regInput = state;
+        un = 0;
+
+        double output = 0;
+        for(unsigned int r = 0; r < regressors.size(); r++)
+        {
+            auto& self = *regressors[r][un];
+            output += self(regInput)[0];
+        }
+
+        double qmax = output / regressors.size();
         std::vector<int> optimal_actions;
         optimal_actions.push_back(un);
-        for (unsigned int i = 1; i < nactions; ++i)
+        for(unsigned int i = 1; i < nactions; ++i)
         {
-        	auto& self = *regressors[i];
-            vec&& qvalue = self(regInput);
-            if (qmax < qvalue[0])
+            double output = 0;
+            for(unsigned int r = 0; r < regressors.size(); r++)
+            {
+                auto& self = *regressors[r][i];
+                output += self(regInput)[0];
+            }
+
+            double qvalue = output / regressors.size();
+            if (qmax < qvalue)
             {
                 optimal_actions.clear();
-                qmax = qvalue[0];
+                qmax = qvalue;
                 un = i;
                 optimal_actions.push_back(un);
             }
-            else if (qmax == qvalue[0])
+            else if (qmax == qvalue)
             {
                 optimal_actions.push_back(i);
             }
@@ -59,7 +73,6 @@ unsigned int e_GreedyMultipleRegressors::operator()(const arma::vec& state)
         unsigned int index = RandomGenerator::sampleUniformInt(0,
                              optimal_actions.size() - 1);
         un = optimal_actions[index];
-        // un = optimal_actions[0];//--------------------- RIMUOVERE
     }
 
     return un;
@@ -78,9 +91,4 @@ hyperparameters_map e_GreedyMultipleRegressors::getPolicyHyperparameters()
     hyperParameters["eps"] = eps;
     return hyperParameters;
 }
-
-
-
-
-
 }

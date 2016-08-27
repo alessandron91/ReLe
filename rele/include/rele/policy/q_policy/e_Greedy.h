@@ -25,6 +25,7 @@
 #define E_GREEDY_H_
 
 #include "rele/policy/q_policy/ActionValuePolicy.h"
+#include "rele/approximators/regressors/others/GaussianProcess.h"
 
 namespace ReLe
 {
@@ -97,6 +98,8 @@ protected:
     double eps;
 
 };
+
+
 
 }
 #endif /* E_GREEDY_H_ */
