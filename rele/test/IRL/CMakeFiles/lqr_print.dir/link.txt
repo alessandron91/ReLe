@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/lqr_print.dir/step_based_linear/LQRPrintTest.cpp.o  -o lqr_print -rdynamic ../../librele.a -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

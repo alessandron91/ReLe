@@ -42,11 +42,15 @@ public:
      */
     SwingUpSettings();
 
+    SwingUpSettings(bool isContinuous);
+
     /*!
      * Default settings initialization
      * \param settings the default settings
      */
     static void defaultSettings(SwingUpSettings& settings);
+
+    static void continuousSettings(SwingUpSettings& settings);
 
     virtual ~SwingUpSettings();
 

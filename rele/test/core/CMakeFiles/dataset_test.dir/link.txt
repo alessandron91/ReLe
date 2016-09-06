@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/dataset_test.dir/DatasetTest.cpp.o  -o dataset_test -rdynamic ../../librele.a -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

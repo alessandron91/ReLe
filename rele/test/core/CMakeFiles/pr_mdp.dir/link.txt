@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/pr_mdp.dir/ParametricRewardMDPTest.cpp.o  -o pr_mdp -rdynamic ../../librele.a -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

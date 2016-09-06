@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/lqr_eblirl.dir/episode_based_linear/LQRTest.cpp.o  -o lqr_eblirl -rdynamic ../../librele.a -lboost_program_options -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

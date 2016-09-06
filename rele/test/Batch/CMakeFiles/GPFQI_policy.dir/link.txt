@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/GPFQI_policy.dir/GP-FQIPolicyTest.cpp.o  -o GPFQI_policy -rdynamic ../../librele.a -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

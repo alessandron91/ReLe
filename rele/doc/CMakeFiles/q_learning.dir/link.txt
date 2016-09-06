@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/q_learning.dir/tutorials/code/q_learning.cpp.o  -o q_learning -rdynamic ../librele.a -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

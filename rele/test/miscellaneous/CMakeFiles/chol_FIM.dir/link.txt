@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/chol_FIM.dir/CholeskyFIMTest.cpp.o  -o chol_FIM -rdynamic ../../librele.a -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

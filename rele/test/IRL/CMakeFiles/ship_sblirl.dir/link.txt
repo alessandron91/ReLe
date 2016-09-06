@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/ship_sblirl.dir/step_based_linear/ShipSteeringTest.cpp.o  -o ship_sblirl -rdynamic ../../librele.a -lboost_program_options -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

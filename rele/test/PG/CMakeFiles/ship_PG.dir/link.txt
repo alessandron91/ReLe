@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/ship_PG.dir/ShipSteeringPGTest.cpp.o  -o ship_PG -rdynamic ../../librele.a -lboost_program_options -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

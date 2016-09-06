@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/dam_PG.dir/DamPGTest.cpp.o  -o dam_PG -rdynamic ../../librele.a -lboost_program_options -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

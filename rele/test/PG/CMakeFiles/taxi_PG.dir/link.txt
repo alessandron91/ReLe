@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -Wsuggest-override -g   CMakeFiles/taxi_PG.dir/TaxiFuelPGTest.cpp.o  -o taxi_PG -rdynamic ../../librele.a -lboost_program_options -larmadillo -lnlopt -lboost_system -lboost_timer -lboost_chrono 

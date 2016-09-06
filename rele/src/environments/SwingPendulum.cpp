@@ -14,6 +14,53 @@ SwingUpSettings::SwingUpSettings()
     SwingUpSettings::defaultSettings(*this);
 }
 
+
+
+SwingUpSettings::SwingUpSettings(bool isContinuous)
+{
+	if (isContinuous)
+		SwingUpSettings::continuousSettings(*this);
+	else
+	    SwingUpSettings::defaultSettings(*this);
+
+}
+
+void SwingUpSettings::continuousSettings(SwingUpSettings& settings)
+{
+	 //Environment Parameters
+	    settings.gamma = 0.999;
+	    settings.stateDimensionality = 2;
+	    settings.actionDimensionality =1;
+	    settings.rewardDimensionality = 1;
+	    settings.statesNumber = 0;
+	    settings.actionsNumber = 0;
+	    settings.isFiniteHorizon = false;
+	    settings.isAverageReward = false;
+	    settings.isEpisodic = false;
+	    settings.horizon = 80;
+
+	    //SwingUp parameters
+	    settings.stepTime = 0.01;
+	    double uMax = 5.0/*Doya's paper 5.0*/;
+	    double maxVelocity = M_PI_4 / settings.stepTime;
+	    settings.actionRange = Range(-1.0, 1.0);
+	    settings.thetaRange = Range(-M_PI, M_PI);
+	    settings.velocityRange = Range(-maxVelocity, maxVelocity);
+	    settings.mass = 1.0;
+	    settings.length = 1.0;
+	    settings.g = 9.8;
+	    settings.requiredUpTime = 10.0;
+	    settings.upRange = M_PI_4 /*seconds*/;
+	    settings.useOverRotated = false;
+	    settings.random_start = true;
+
+
+	    assert(settings.actionsNumber == settings.actionList.size());
+
+
+
+}
+
 void SwingUpSettings::defaultSettings(SwingUpSettings& settings)
 {
     //Environment Parameters
